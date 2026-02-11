@@ -1,42 +1,43 @@
-// Simple Particle Waterfall Animation (constant flow) — wider, less dense, digital particles
 class SimpleParticleWaterfall {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         if (!this.canvas) return;
 
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext("2d");
         this.particles = [];
         this.time = 0;
 
-        // MUCH wider + more visible
-        this.particleCount = 950;        // more particles but not dense glow
-        this.spawnBandWidth = 620;       // very wide stream
-        this.windStrength = 0.06;
-        this.centerPull = 0.0005;        // minimal pull (more natural spread)
-        this.flutter = 0.02;
-        this.maxVx = 1.5;
+        // Digital lane settings
+        this.particleCount = 850;
+        this.spawnBandWidth = 700;     // wide waterfall
+        this.laneCount = 85;           // vertical lanes
+        this.baseSpeed = 3.2;
 
-        // Brighter but still digital blues
-        this.hues = [196, 202, 208, 214, 220];
+        // Blue palette
+        this.hues = [198, 204, 210, 216];
 
         this.resize();
         this.init();
         this.animate();
 
-        window.addEventListener('resize', () => this.resize());
+        window.addEventListener("resize", () => this.resize());
     }
 
     resize() {
         const dpr = window.devicePixelRatio || 1;
+
         this.canvas.width = window.innerWidth * dpr;
         this.canvas.height = window.innerHeight * dpr;
         this.canvas.style.width = window.innerWidth + "px";
         this.canvas.style.height = window.innerHeight + "px";
+
         this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         this.w = window.innerWidth;
         this.h = window.innerHeight;
-        this.centerX = this.w * 0.5;
+        this.centerX = this.w / 2;
+
+        this.laneSpacing = this.spawnBandWidth / this.laneCount;
     }
 
     init() {
@@ -47,52 +48,46 @@ class SimpleParticleWaterfall {
     }
 
     createParticle(randomY = false) {
-        const spread = (Math.random() - 0.5) * this.spawnBandWidth;
-        const x = this.centerX + spread;
+        const laneIndex = Math.floor(Math.random() * this.laneCount);
 
-        const y = randomY ? Math.random() * this.h : -20 - Math.random() * 200;
+        const laneX =
+            this.centerX -
+            this.spawnBandWidth / 2 +
+            laneIndex * this.laneSpacing;
 
-        const hue = this.hues[Math.floor(Math.random() * this.hues.length)];
+        const y = randomY
+            ? Math.random() * this.h
+            : -20 - Math.random() * 200;
 
         return {
-            x,
+            laneX,
+            x: laneX,
             y,
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: 3 + Math.random() * 4.5,
-            size: 2 + Math.random() * 2.5,      // much larger pixels
-            opacity: 0.25 + Math.random() * 0.35, // much more visible
-            hue,
-            sat: 85 + Math.random() * 10,
-            lit: 62 + Math.random() * 10
+            vy: this.baseSpeed + Math.random() * 3,
+            size: 2 + Math.random() * 2,
+            opacity: 0.25 + Math.random() * 0.4,
+            hue: this.hues[Math.floor(Math.random() * this.hues.length)],
         };
     }
 
     drawBackground() {
         const g = this.ctx.createLinearGradient(0, 0, 0, this.h);
-        g.addColorStop(0, 'rgba(5, 8, 15, 1)');
-        g.addColorStop(1, 'rgba(8, 12, 20, 1)');
+        g.addColorStop(0, "rgba(6,10,18,1)");
+        g.addColorStop(1, "rgba(8,12,20,1)");
         this.ctx.fillStyle = g;
         this.ctx.fillRect(0, 0, this.w, this.h);
     }
 
     update() {
         this.time++;
-        const wind = Math.sin(this.time * 0.002) * this.windStrength;
 
         for (const p of this.particles) {
-            p.vx += wind + (Math.random() - 0.5) * this.flutter;
-            p.vx += (this.centerX - p.x) * this.centerPull;
-
-            p.vx *= 0.99;
-            if (p.vx > this.maxVx) p.vx = this.maxVx;
-            if (p.vx < -this.maxVx) p.vx = -this.maxVx;
+            // Tiny jitter so lanes don't feel rigid
+            p.x = p.laneX + Math.sin(this.time * 0.02 + p.y * 0.01) * 1.2;
 
             p.y += p.vy;
-            p.x += p.vx;
 
-            if (p.y > this.h * 0.92) p.opacity -= 0.003;
-
-            if (p.y > this.h + 40 || p.opacity <= 0) {
+            if (p.y > this.h + 30) {
                 const np = this.createParticle(false);
                 Object.assign(p, np);
             }
@@ -102,19 +97,24 @@ class SimpleParticleWaterfall {
     drawParticles() {
         const ctx = this.ctx;
         ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalCompositeOperation = "source-over";
 
         for (const p of this.particles) {
-            const a = Math.max(0, Math.min(1, p.opacity));
-            ctx.globalAlpha = a;
+            ctx.globalAlpha = p.opacity;
 
-            // Larger digital squares
-            ctx.fillStyle = `hsla(${p.hue}, ${p.sat}%, ${p.lit}%, 1)`;
+            ctx.fillStyle = `hsla(${p.hue}, 85%, 65%, 1)`;
+
+            // Square digital pixel
             ctx.fillRect(p.x, p.y, p.size, p.size);
 
-            // Stronger visible digital trail
-            ctx.globalAlpha = a * 0.3;
-            ctx.fillRect(p.x + p.size/2 - 1, p.y - p.vy * 1.8, 2, p.size * 3);
+            // Thin vertical digital trail
+            ctx.globalAlpha = p.opacity * 0.35;
+            ctx.fillRect(
+                p.x + p.size / 2 - 1,
+                p.y - p.vy * 2,
+                2,
+                p.size * 3
+            );
         }
 
         ctx.restore();
@@ -128,7 +128,6 @@ class SimpleParticleWaterfall {
         requestAnimationFrame(() => this.animate());
     }
 }
-
 
 
 // Custom cursor tracking
