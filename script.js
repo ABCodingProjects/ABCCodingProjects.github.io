@@ -52,29 +52,38 @@ class WaterfallAnimation {
         const baseX = side === 'left' ? 0 : this.width;
         const direction = side === 'left' ? 1 : -1;
         
-        // Create layered rock formations
+        // Create layered rock formations with distinct stone colors
         const layers = 4;
         for (let layer = 0; layer < layers; layer++) {
             const points = [];
             const segments = 30;
-            const layerDepth = layer * 120 * direction;
+            const layerDepth = layer * 80 * direction;
             
             for (let i = 0; i <= segments; i++) {
                 const y = (i / segments) * this.height;
                 
                 // Create irregular, jutting rock edges
-                const baseWidth = 250 + layer * 50;
-                const noise = Math.sin(i * 0.3 + layer) * 50 + Math.cos(i * 0.5) * 30;
-                const juttingEdge = Math.random() > 0.7 ? Math.random() * 60 : 0;
+                const baseWidth = 300 + layer * 40;
+                const noise = Math.sin(i * 0.3 + layer) * 60 + Math.cos(i * 0.5) * 40;
+                const juttingEdge = Math.random() > 0.6 ? Math.random() * 80 : 0;
                 
                 const x = baseX + (baseWidth + noise + juttingEdge) * direction + layerDepth;
                 
                 points.push({ x, y });
             }
             
+            // Dark stone colors - greys and blacks
+            const stoneColors = [
+                'rgba(45, 50, 60, 0.95)',    // Dark grey-blue
+                'rgba(35, 38, 45, 0.90)',    // Darker grey
+                'rgba(25, 28, 35, 0.85)',    // Very dark grey
+                'rgba(20, 22, 28, 0.80)'     // Almost black
+            ];
+            
             rocks.push({
                 points,
-                color: `rgba(${20 + layer * 10}, ${23 + layer * 10}, ${31 + layer * 10}, ${0.9 - layer * 0.15})`
+                color: stoneColors[layer],
+                layer
             });
         }
         
@@ -96,15 +105,29 @@ class WaterfallAnimation {
             this.ctx.lineTo(0, this.height);
             this.ctx.closePath();
             
+            // Fill with stone color
             this.ctx.fillStyle = rock.color;
             this.ctx.fill();
             
-            // Add texture and highlights
+            // Add edge highlights to make rocks visible
+            this.ctx.beginPath();
+            rock.points.forEach((point, i) => {
+                if (i === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+            });
+            
+            // Subtle blue-grey edge highlight
             if (index === 0) {
-                this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+                this.ctx.strokeStyle = 'rgba(80, 100, 120, 0.5)';
+                this.ctx.lineWidth = 3;
+            } else {
+                this.ctx.strokeStyle = 'rgba(60, 75, 90, 0.3)';
                 this.ctx.lineWidth = 2;
-                this.ctx.stroke();
             }
+            this.ctx.stroke();
             
             this.ctx.restore();
         });
@@ -123,15 +146,29 @@ class WaterfallAnimation {
             this.ctx.lineTo(this.width, this.height);
             this.ctx.closePath();
             
+            // Fill with stone color
             this.ctx.fillStyle = rock.color;
             this.ctx.fill();
             
-            // Add texture and highlights
+            // Add edge highlights
+            this.ctx.beginPath();
+            rock.points.forEach((point, i) => {
+                if (i === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+            });
+            
+            // Subtle blue-grey edge highlight
             if (index === 0) {
-                this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+                this.ctx.strokeStyle = 'rgba(80, 100, 120, 0.5)';
+                this.ctx.lineWidth = 3;
+            } else {
+                this.ctx.strokeStyle = 'rgba(60, 75, 90, 0.3)';
                 this.ctx.lineWidth = 2;
-                this.ctx.stroke();
             }
+            this.ctx.stroke();
             
             this.ctx.restore();
         });
@@ -150,8 +187,33 @@ class WaterfallAnimation {
             particle.vx *= 0.99;
             
             // Slight turbulence in the center
-            const centerOffset = particle.x - this.width * 0.5;
             particle.vx += (Math.random() - 0.5) * 0.2;
+            
+            // Check collision with left rocks
+            if (particle.x < this.width * 0.3) {
+                const leftEdge = this.getLeftRockEdge(particle.y);
+                if (particle.x < leftEdge) {
+                    particle.x = leftEdge;
+                    particle.vx = Math.abs(particle.vx) * 0.6; // Bounce right
+                    particle.vy *= 0.8; // Lose some downward momentum
+                    
+                    // Create splash effect
+                    particle.opacity *= 0.7;
+                }
+            }
+            
+            // Check collision with right rocks
+            if (particle.x > this.width * 0.7) {
+                const rightEdge = this.getRightRockEdge(particle.y);
+                if (particle.x > rightEdge) {
+                    particle.x = rightEdge;
+                    particle.vx = -Math.abs(particle.vx) * 0.6; // Bounce left
+                    particle.vy *= 0.8; // Lose some downward momentum
+                    
+                    // Create splash effect
+                    particle.opacity *= 0.7;
+                }
+            }
             
             // Update life
             particle.life += 0.01;
@@ -171,6 +233,28 @@ class WaterfallAnimation {
                 particle.life = 0;
             }
         });
+    }
+    
+    getLeftRockEdge(y) {
+        // Get the x position of the left rock edge at height y
+        const normalizedY = y / this.height;
+        const index = Math.floor(normalizedY * 29);
+        
+        if (this.leftRocks[0] && this.leftRocks[0].points[index]) {
+            return this.leftRocks[0].points[index].x;
+        }
+        return 0;
+    }
+    
+    getRightRockEdge(y) {
+        // Get the x position of the right rock edge at height y
+        const normalizedY = y / this.height;
+        const index = Math.floor(normalizedY * 29);
+        
+        if (this.rightRocks[0] && this.rightRocks[0].points[index]) {
+            return this.rightRocks[0].points[index].x;
+        }
+        return this.width;
     }
     
     drawParticles() {
@@ -360,6 +444,40 @@ function initParallax() {
 
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+    // Custom cursor tracking
+    const cursor = document.createElement('div');
+    cursor.style.cssText = `
+        position: fixed;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        background: rgba(59, 130, 246, 0.2);
+        pointer-events: none;
+        z-index: 10000;
+        transform: translate(-50%, -50%);
+        transition: width 0.15s ease, height 0.15s ease, background 0.15s ease;
+        mix-blend-mode: screen;
+    `;
+    document.body.appendChild(cursor);
+    
+    document.addEventListener('mousemove', (e) => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+    });
+    
+    document.addEventListener('mousedown', () => {
+        cursor.style.width = '16px';
+        cursor.style.height = '16px';
+        cursor.style.background = 'rgba(59, 130, 246, 0.5)';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        cursor.style.width = '20px';
+        cursor.style.height = '20px';
+        cursor.style.background = 'rgba(59, 130, 246, 0.2)';
+    });
+    
     // Initialize waterfall animation
     new WaterfallAnimation('waterfallCanvas');
     
