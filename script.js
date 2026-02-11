@@ -29,30 +29,29 @@ class MountainWaterfall {
         // Create mountain shape
         this.mountain = this.generateMountain();
         
-        // Water source point (partway up the mountain)
+        // Water source point (partway up the mountain center)
         this.waterSource = {
             x: this.width * 0.5,
-            y: this.height * 0.35 // Water starts 35% down from top
+            y: this.height * 0.30 // Water starts 30% down from top
         };
         
-        // Create water particles that flow down the mountain
+        // Create water particles that fall straight down
         for (let i = 0; i < this.particleCount; i++) {
             this.particles.push(this.createParticle());
         }
     }
     
     createParticle() {
-        // Particles start at the water source
+        // Particles start at the water source and fall straight down
         return {
-            x: this.waterSource.x + (Math.random() - 0.5) * 40,
-            y: this.waterSource.y + (Math.random() - 0.5) * 20,
-            vx: (Math.random() - 0.5) * 2,
-            vy: Math.random() * 2 + 1,
+            x: this.waterSource.x + (Math.random() - 0.5) * 80,
+            y: this.waterSource.y + Math.random() * 50,
+            vx: (Math.random() - 0.5) * 0.8,
+            vy: Math.random() * 3 + 2,
             size: Math.random() * 3 + 1.5,
             opacity: Math.random() * 0.7 + 0.3,
             hue: 200 + Math.random() * 30,
-            life: 0,
-            onMountain: true
+            life: 0
         };
     }
     
@@ -107,55 +106,26 @@ class MountainWaterfall {
     
     updateParticles() {
         this.particles.forEach(particle => {
-            // Apply physics
+            // Simple vertical fall with slight horizontal drift
             particle.x += particle.vx;
             particle.y += particle.vy;
             
-            // Gravity
-            particle.vy += 0.2;
+            // Gravity acceleration
+            particle.vy += 0.15;
             
-            // Get mountain surface at particle position
-            const mountainY = this.getMountainHeightAt(particle.x);
+            // Slight horizontal turbulence
+            particle.vx += (Math.random() - 0.5) * 0.3;
             
-            // Check if particle is on the mountain
-            if (particle.y >= mountainY - 5) {
-                particle.onMountain = true;
-                particle.y = mountainY - 2;
-                
-                // Flow down the mountain slope
-                const leftHeight = this.getMountainHeightAt(particle.x - 5);
-                const rightHeight = this.getMountainHeightAt(particle.x + 5);
-                
-                // Flow towards lower ground
-                if (leftHeight < rightHeight) {
-                    particle.vx -= 0.3;
-                } else {
-                    particle.vx += 0.3;
-                }
-                
-                // Limit horizontal speed on mountain
-                particle.vx = Math.max(-4, Math.min(4, particle.vx));
-                particle.vy = 2; // Constant downward flow on mountain
-                
-                // Add turbulence
-                particle.vx += (Math.random() - 0.5) * 0.5;
-            } else {
-                particle.onMountain = false;
-                // In air - regular gravity
+            // Air resistance
+            particle.vx *= 0.98;
+            
+            // Fade as particles fall lower
+            if (particle.y > this.height * 0.75) {
+                particle.opacity -= 0.02;
             }
             
-            // Friction on mountain
-            if (particle.onMountain) {
-                particle.vx *= 0.95;
-            }
-            
-            // Fade near edges
-            if (particle.x < this.width * 0.1 || particle.x > this.width * 0.9) {
-                particle.opacity -= 0.03;
-            }
-            
-            // Reset if off screen or faded
-            if (particle.y > this.height || particle.x < 0 || particle.x > this.width || particle.opacity <= 0) {
+            // Reset particle when off screen
+            if (particle.y > this.height || particle.opacity <= 0 || particle.x < 0 || particle.x > this.width) {
                 const newParticle = this.createParticle();
                 particle.x = newParticle.x;
                 particle.y = newParticle.y;
@@ -265,22 +235,20 @@ class MountainWaterfall {
             this.ctx.arc(particle.x, particle.y, particle.size * 3, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Add motion blur for particles on mountain
-            if (particle.onMountain && Math.abs(particle.vx) > 1) {
-                this.ctx.globalAlpha = particle.opacity * 0.3;
-                this.ctx.fillStyle = `hsla(${particle.hue}, 70%, 55%, 0.3)`;
-                this.ctx.beginPath();
-                this.ctx.ellipse(
-                    particle.x - particle.vx * 2, 
-                    particle.y, 
-                    particle.size * 2, 
-                    particle.size, 
-                    0, 
-                    0, 
-                    Math.PI * 2
-                );
-                this.ctx.fill();
-            }
+            // Add motion blur effect for falling water
+            this.ctx.globalAlpha = particle.opacity * 0.4;
+            this.ctx.fillStyle = `hsla(${particle.hue}, 70%, 55%, 0.3)`;
+            this.ctx.beginPath();
+            this.ctx.ellipse(
+                particle.x, 
+                particle.y - particle.vy * 1.5, 
+                particle.size, 
+                particle.size * 2.5, 
+                0, 
+                0, 
+                Math.PI * 2
+            );
+            this.ctx.fill();
             
             this.ctx.restore();
         });
