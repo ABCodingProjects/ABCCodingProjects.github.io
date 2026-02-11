@@ -44,15 +44,15 @@ class WaterfallAnimation {
         // Create mountain/cliff structure
         this.cliffPoints = this.generateCliff();
         
-        // Create fog clouds
+        // Create fog clouds at mountain peak level
         this.fogClouds = [];
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 12; i++) {
             this.fogClouds.push({
                 x: Math.random() * this.width,
-                y: this.height * 0.4 + Math.random() * this.height * 0.2,
-                vx: (Math.random() - 0.5) * 0.3,
-                size: Math.random() * 200 + 150,
-                opacity: Math.random() * 0.15 + 0.1,
+                y: this.height * 0.35 + Math.random() * this.height * 0.15, // Position at peak level
+                vx: (Math.random() - 0.5) * 0.4,
+                size: Math.random() * 180 + 120,
+                opacity: Math.random() * 0.2 + 0.15,
                 life: Math.random() * Math.PI * 2
             });
         }
@@ -60,18 +60,22 @@ class WaterfallAnimation {
     
     generateCliff() {
         const points = [];
-        const segments = 40; // Fewer segments for more angular peaks
-        const baseHeight = this.height * 0.5;
+        const segments = 25; // Much fewer segments for larger, more distinct peaks
+        const baseHeight = this.height * 0.55;
         
         for (let i = 0; i <= segments; i++) {
             const x = (i / segments) * this.width;
             
-            // Create jagged, geometric peaks
-            const peakVariation = Math.abs(Math.sin(i * 0.8)) * 150;
-            const sharpNoise = (Math.random() - 0.5) * 80; // Random sharp variations
-            const geometricPattern = Math.abs(Math.sin(i * 1.2) * Math.cos(i * 0.6)) * 120;
+            // Create major peaks (3-4 large mountains across screen)
+            const majorPeak = Math.abs(Math.sin(i * 0.4)) * 200;
             
-            const y = baseHeight - peakVariation + sharpNoise - geometricPattern;
+            // Add secondary ridges below summits
+            const secondaryRidge = Math.abs(Math.cos(i * 1.2)) * 80;
+            
+            // Sharp angular variations for jagged edges
+            const sharpNoise = (Math.random() - 0.5) * 60;
+            
+            const y = baseHeight - majorPeak - secondaryRidge + sharpNoise;
             
             points.push({ x, y });
         }
@@ -234,29 +238,31 @@ class WaterfallAnimation {
         this.fogClouds.forEach(cloud => {
             this.ctx.globalAlpha = cloud.opacity;
             
-            // Create soft, organic fog clouds
+            // Create soft, wispy fog clouds
             const fogGradient = this.ctx.createRadialGradient(
                 cloud.x, 
-                cloud.y + Math.sin(cloud.life) * 20, 
+                cloud.y + Math.sin(cloud.life) * 15, 
                 0,
                 cloud.x, 
-                cloud.y + Math.sin(cloud.life) * 20, 
+                cloud.y + Math.sin(cloud.life) * 15, 
                 cloud.size
             );
             
-            fogGradient.addColorStop(0, 'rgba(160, 190, 220, 0.6)');
-            fogGradient.addColorStop(0.5, 'rgba(120, 150, 180, 0.3)');
+            // More visible fog with blue-white tones
+            fogGradient.addColorStop(0, 'rgba(200, 220, 240, 0.7)');
+            fogGradient.addColorStop(0.4, 'rgba(160, 190, 220, 0.4)');
+            fogGradient.addColorStop(0.7, 'rgba(120, 150, 180, 0.2)');
             fogGradient.addColorStop(1, 'rgba(80, 110, 140, 0)');
             
             this.ctx.fillStyle = fogGradient;
             this.ctx.beginPath();
             
-            // Draw organic cloud shape
-            for (let i = 0; i < 8; i++) {
-                const angle = (i / 8) * Math.PI * 2;
-                const radius = cloud.size * (0.8 + Math.sin(angle * 3 + cloud.life) * 0.2);
+            // Draw organic, wispy cloud shape
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const radius = cloud.size * (0.7 + Math.sin(angle * 4 + cloud.life * 2) * 0.3);
                 const x = cloud.x + Math.cos(angle) * radius;
-                const y = (cloud.y + Math.sin(cloud.life) * 20) + Math.sin(angle) * radius;
+                const y = (cloud.y + Math.sin(cloud.life) * 15) + Math.sin(angle) * radius * 0.6;
                 
                 if (i === 0) {
                     this.ctx.moveTo(x, y);
@@ -267,6 +273,33 @@ class WaterfallAnimation {
             
             this.ctx.closePath();
             this.ctx.fill();
+            
+            // Add extra wispy tendrils
+            this.ctx.globalAlpha = cloud.opacity * 0.5;
+            for (let j = 0; j < 3; j++) {
+                const tendrilGradient = this.ctx.createRadialGradient(
+                    cloud.x + Math.cos(j * 2) * cloud.size * 0.5,
+                    cloud.y + Math.sin(cloud.life + j) * 10,
+                    0,
+                    cloud.x + Math.cos(j * 2) * cloud.size * 0.5,
+                    cloud.y + Math.sin(cloud.life + j) * 10,
+                    cloud.size * 0.4
+                );
+                
+                tendrilGradient.addColorStop(0, 'rgba(180, 200, 220, 0.5)');
+                tendrilGradient.addColorStop(1, 'rgba(120, 150, 180, 0)');
+                
+                this.ctx.fillStyle = tendrilGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    cloud.x + Math.cos(j * 2) * cloud.size * 0.5,
+                    cloud.y + Math.sin(cloud.life + j) * 10,
+                    cloud.size * 0.4,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.fill();
+            }
         });
         
         this.ctx.restore();
