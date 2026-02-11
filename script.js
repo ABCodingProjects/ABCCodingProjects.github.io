@@ -43,17 +43,35 @@ class WaterfallAnimation {
         
         // Create mountain/cliff structure
         this.cliffPoints = this.generateCliff();
+        
+        // Create fog clouds
+        this.fogClouds = [];
+        for (let i = 0; i < 8; i++) {
+            this.fogClouds.push({
+                x: Math.random() * this.width,
+                y: this.height * 0.4 + Math.random() * this.height * 0.2,
+                vx: (Math.random() - 0.5) * 0.3,
+                size: Math.random() * 200 + 150,
+                opacity: Math.random() * 0.15 + 0.1,
+                life: Math.random() * Math.PI * 2
+            });
+        }
     }
     
     generateCliff() {
         const points = [];
-        const segments = 80;
-        const cliffHeight = this.height * 0.5;
+        const segments = 40; // Fewer segments for more angular peaks
+        const baseHeight = this.height * 0.5;
         
         for (let i = 0; i <= segments; i++) {
             const x = (i / segments) * this.width;
-            const noise = Math.sin(i * 0.15) * 40 + Math.cos(i * 0.08) * 25;
-            const y = cliffHeight + noise;
+            
+            // Create jagged, geometric peaks
+            const peakVariation = Math.abs(Math.sin(i * 0.8)) * 150;
+            const sharpNoise = (Math.random() - 0.5) * 80; // Random sharp variations
+            const geometricPattern = Math.abs(Math.sin(i * 1.2) * Math.cos(i * 0.6)) * 120;
+            
+            const y = baseHeight - peakVariation + sharpNoise - geometricPattern;
             
             points.push({ x, y });
         }
@@ -93,8 +111,9 @@ class WaterfallAnimation {
             }
         });
         
-        this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
-        this.ctx.lineWidth = 2;
+        this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
+        this.ctx.lineWidth = 3;
+        this.ctx.lineJoin = 'miter'; // Sharp corners instead of rounded
         this.ctx.stroke();
         
         this.ctx.restore();
@@ -189,6 +208,70 @@ class WaterfallAnimation {
         this.ctx.restore();
     }
     
+    updateFog() {
+        this.fogClouds.forEach(cloud => {
+            // Move fog horizontally
+            cloud.x += cloud.vx;
+            
+            // Gentle vertical oscillation
+            cloud.life += 0.01;
+            
+            // Wrap around screen
+            if (cloud.x > this.width + cloud.size) {
+                cloud.x = -cloud.size;
+            } else if (cloud.x < -cloud.size) {
+                cloud.x = this.width + cloud.size;
+            }
+            
+            // Pulsing opacity
+            cloud.opacity = 0.12 + Math.sin(cloud.life) * 0.08;
+        });
+    }
+    
+    drawFog() {
+        this.ctx.save();
+        
+        this.fogClouds.forEach(cloud => {
+            this.ctx.globalAlpha = cloud.opacity;
+            
+            // Create soft, organic fog clouds
+            const fogGradient = this.ctx.createRadialGradient(
+                cloud.x, 
+                cloud.y + Math.sin(cloud.life) * 20, 
+                0,
+                cloud.x, 
+                cloud.y + Math.sin(cloud.life) * 20, 
+                cloud.size
+            );
+            
+            fogGradient.addColorStop(0, 'rgba(160, 190, 220, 0.6)');
+            fogGradient.addColorStop(0.5, 'rgba(120, 150, 180, 0.3)');
+            fogGradient.addColorStop(1, 'rgba(80, 110, 140, 0)');
+            
+            this.ctx.fillStyle = fogGradient;
+            this.ctx.beginPath();
+            
+            // Draw organic cloud shape
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const radius = cloud.size * (0.8 + Math.sin(angle * 3 + cloud.life) * 0.2);
+                const x = cloud.x + Math.cos(angle) * radius;
+                const y = (cloud.y + Math.sin(cloud.life) * 20) + Math.sin(angle) * radius;
+                
+                if (i === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+            
+            this.ctx.closePath();
+            this.ctx.fill();
+        });
+        
+        this.ctx.restore();
+    }
+    
     drawBackground() {
         // Animated gradient background
         const bgGradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
@@ -211,6 +294,8 @@ class WaterfallAnimation {
         this.drawCliff();
         this.updateParticles();
         this.drawParticles();
+        this.updateFog();
+        this.drawFog();
         this.drawMist();
         
         requestAnimationFrame(() => this.animate());
