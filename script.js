@@ -44,18 +44,18 @@ class WaterfallAnimation {
         // Create mountain/cliff structure
         this.cliffPoints = this.generateCliff();
         
-        // Create prominent fog clouds that flow through peaks
+        // Create subtle fog clouds that hover below peaks
         this.fogClouds = [];
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 8; i++) {
             this.fogClouds.push({
                 x: Math.random() * this.width * 1.5 - this.width * 0.25,
-                y: this.height * 0.35 + Math.random() * this.height * 0.25,
-                vx: (Math.random() - 0.5) * 0.6 + 0.3, // Mostly moving right
-                vy: (Math.random() - 0.5) * 0.15, // Slight vertical drift
-                size: Math.random() * 250 + 150,
-                opacity: Math.random() * 0.35 + 0.25, // Much more visible
+                y: this.height * 0.50 + Math.random() * this.height * 0.10, // Below peaks
+                vx: (Math.random() - 0.5) * 0.3 + 0.2,
+                vy: (Math.random() - 0.5) * 0.08,
+                size: Math.random() * 180 + 100,
+                opacity: Math.random() * 0.20 + 0.15, // More subtle
                 life: Math.random() * Math.PI * 2,
-                speed: Math.random() * 0.02 + 0.01
+                speed: Math.random() * 0.015 + 0.008
             });
         }
     }
@@ -231,41 +231,39 @@ class WaterfallAnimation {
     
     updateFog() {
         this.fogClouds.forEach(cloud => {
-            // Flow horizontally with varying speeds
+            // Slow horizontal drift
             cloud.x += cloud.vx;
             
-            // Gentle vertical oscillation as fog rises and falls
-            cloud.y += cloud.vy + Math.sin(cloud.life) * 0.2;
+            // Minimal vertical drift
+            cloud.y += cloud.vy;
             cloud.life += cloud.speed;
             
-            // Wrap around screen for continuous flow
+            // Wrap around horizontally
             if (cloud.x > this.width + cloud.size) {
                 cloud.x = -cloud.size;
-                cloud.y = this.height * 0.35 + Math.random() * this.height * 0.25;
             } else if (cloud.x < -cloud.size) {
                 cloud.x = this.width + cloud.size;
-                cloud.y = this.height * 0.35 + Math.random() * this.height * 0.25;
             }
             
-            // Keep fog in mountain range vertically
-            if (cloud.y < this.height * 0.3) cloud.vy = Math.abs(cloud.vy);
-            if (cloud.y > this.height * 0.6) cloud.vy = -Math.abs(cloud.vy);
+            // Keep fog below peaks (50-60% of screen)
+            if (cloud.y < this.height * 0.48) cloud.y = this.height * 0.48;
+            if (cloud.y > this.height * 0.62) cloud.y = this.height * 0.62;
             
-            // Dynamic opacity pulsing for depth
-            cloud.opacity = 0.3 + Math.sin(cloud.life * 0.5) * 0.15;
+            // Subtle opacity pulsing
+            cloud.opacity = 0.18 + Math.sin(cloud.life * 0.5) * 0.08;
         });
     }
     
     drawFog() {
         this.ctx.save();
         
-        // Add blur filter for softer, more atmospheric fog
-        this.ctx.filter = 'blur(8px)';
+        // Lighter blur for better performance
+        this.ctx.filter = 'blur(4px)';
         
         this.fogClouds.forEach(cloud => {
             this.ctx.globalAlpha = cloud.opacity;
             
-            // Create prominent, wispy fog clouds
+            // Simple, soft fog clouds
             const fogGradient = this.ctx.createRadialGradient(
                 cloud.x, 
                 cloud.y, 
@@ -275,92 +273,35 @@ class WaterfallAnimation {
                 cloud.size
             );
             
-            // Much more visible white-blue fog
-            fogGradient.addColorStop(0, 'rgba(240, 250, 255, 0.9)');
-            fogGradient.addColorStop(0.3, 'rgba(220, 235, 245, 0.7)');
-            fogGradient.addColorStop(0.6, 'rgba(180, 210, 230, 0.4)');
-            fogGradient.addColorStop(1, 'rgba(140, 180, 210, 0)');
+            // Subtle white-blue fog
+            fogGradient.addColorStop(0, 'rgba(230, 240, 250, 0.6)');
+            fogGradient.addColorStop(0.5, 'rgba(200, 220, 235, 0.3)');
+            fogGradient.addColorStop(1, 'rgba(170, 200, 220, 0)');
             
             this.ctx.fillStyle = fogGradient;
-            
-            // Draw main cloud body with irregular, flowing shape
             this.ctx.beginPath();
-            const points = 16;
-            for (let i = 0; i < points; i++) {
-                const angle = (i / points) * Math.PI * 2;
-                const variation = Math.sin(angle * 5 + cloud.life) * 0.3 + 
-                                Math.cos(angle * 3 + cloud.life * 1.5) * 0.2;
-                const radius = cloud.size * (0.6 + variation);
-                const x = cloud.x + Math.cos(angle) * radius;
-                const y = cloud.y + Math.sin(angle) * radius * 0.7; // Flatten slightly
-                
-                if (i === 0) {
-                    this.ctx.moveTo(x, y);
-                } else {
-                    this.ctx.lineTo(x, y);
-                }
-            }
-            this.ctx.closePath();
+            this.ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Add wispy tendrils that flow through peaks
-            this.ctx.globalAlpha = cloud.opacity * 0.6;
-            const tendrils = 5;
-            for (let j = 0; j < tendrils; j++) {
-                const tendrilAngle = (j / tendrils) * Math.PI * 2;
-                const tendrilX = cloud.x + Math.cos(tendrilAngle + cloud.life) * cloud.size * 0.7;
-                const tendrilY = cloud.y + Math.sin(tendrilAngle + cloud.life * 0.8) * cloud.size * 0.3;
+            // Add just 2 subtle tendrils for wispy effect
+            this.ctx.globalAlpha = cloud.opacity * 0.4;
+            for (let j = 0; j < 2; j++) {
+                const tendrilAngle = (j / 2) * Math.PI * 2;
+                const tendrilX = cloud.x + Math.cos(tendrilAngle + cloud.life) * cloud.size * 0.6;
+                const tendrilY = cloud.y + Math.sin(tendrilAngle + cloud.life * 0.7) * cloud.size * 0.25;
                 
                 const tendrilGradient = this.ctx.createRadialGradient(
                     tendrilX, tendrilY, 0,
-                    tendrilX, tendrilY, cloud.size * 0.5
+                    tendrilX, tendrilY, cloud.size * 0.4
                 );
                 
-                tendrilGradient.addColorStop(0, 'rgba(230, 240, 250, 0.8)');
-                tendrilGradient.addColorStop(0.5, 'rgba(200, 220, 235, 0.4)');
-                tendrilGradient.addColorStop(1, 'rgba(170, 200, 220, 0)');
+                tendrilGradient.addColorStop(0, 'rgba(220, 235, 245, 0.5)');
+                tendrilGradient.addColorStop(1, 'rgba(180, 210, 230, 0)');
                 
                 this.ctx.fillStyle = tendrilGradient;
-                
-                // Draw elongated, wispy tendril
                 this.ctx.beginPath();
-                for (let k = 0; k < 8; k++) {
-                    const a = (k / 8) * Math.PI * 2;
-                    const r = cloud.size * 0.5 * (0.8 + Math.sin(a * 3 + cloud.life) * 0.2);
-                    const px = tendrilX + Math.cos(a) * r;
-                    const py = tendrilY + Math.sin(a) * r * 0.4;
-                    
-                    if (k === 0) {
-                        this.ctx.moveTo(px, py);
-                    } else {
-                        this.ctx.lineTo(px, py);
-                    }
-                }
-                this.ctx.closePath();
+                this.ctx.arc(tendrilX, tendrilY, cloud.size * 0.4, 0, Math.PI * 2);
                 this.ctx.fill();
-            }
-            
-            // Add subtle streaks for flowing effect
-            this.ctx.globalAlpha = cloud.opacity * 0.3;
-            this.ctx.strokeStyle = 'rgba(220, 235, 245, 0.6)';
-            this.ctx.lineWidth = 3;
-            this.ctx.lineCap = 'round';
-            
-            for (let s = 0; s < 3; s++) {
-                this.ctx.beginPath();
-                const startX = cloud.x - cloud.size * 0.3;
-                const startY = cloud.y + (s - 1) * 20;
-                const endX = cloud.x + cloud.size * 0.4;
-                const endY = startY + Math.sin(cloud.life + s) * 15;
-                
-                this.ctx.moveTo(startX, startY);
-                this.ctx.quadraticCurveTo(
-                    (startX + endX) / 2, 
-                    (startY + endY) / 2 + Math.sin(cloud.life * 2 + s) * 10,
-                    endX, 
-                    endY
-                );
-                this.ctx.stroke();
             }
         });
         
