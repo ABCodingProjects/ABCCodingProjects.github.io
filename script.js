@@ -11,7 +11,7 @@ class SimpleParticleWaterfall {
 
     // TUNABLES
     this.particleCount = 420;          // increase for denser water
-    this.spawnWidth = 220;             // width of the stream
+    this.spawnWidth = 420;             // width of the stream
     this.spawnY = 0.15;                // spawn start as % of height
     this.initialSpreadY = 150;         // how "tall" the spawn region is
     this.gravity = 0.08;               // acceleration
@@ -38,13 +38,17 @@ class SimpleParticleWaterfall {
     this.centerX = this.width * 0.5;
   }
 
-  init() {
-    this.particles = [];
-
-    for (let i = 0; i < this.particleCount; i++) {
-      this.particles.push(this.createParticle(true));
-    }
+init() {
+  this.particles = [];
+  for (let i = 0; i < this.particleCount; i++) {
+    const p = this.createParticle(false);
+    // distribute across the full height so it starts as a steady stream
+    p.y = Math.random() * this.height;
+    // vary speed a bit so it doesn't feel synchronized
+    p.vy = Math.random() * 3 + 2;
+    this.particles.push(p);
   }
+}
 
   createParticle(randomY = false) {
     return {
