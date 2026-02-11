@@ -1,177 +1,345 @@
-// Simple Particle Waterfall Animation (constant flow)
-class SimpleParticleWaterfall {
+// Enhanced Waterfall Animation
+class WaterfallAnimation {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         if (!this.canvas) return;
-
+        
         this.ctx = this.canvas.getContext('2d');
         this.particles = [];
+        this.particleCount = 200;
         this.time = 0;
-
-        // Tunables
-        this.particleCount = 450;
-        this.spawnBandWidth = 260; // width of the waterfall stream
-        this.windStrength = 0.15;  // subtle sideways drift
-
+        
         this.resize();
         this.init();
         this.animate();
-
+        
         window.addEventListener('resize', () => this.resize());
     }
-
+    
     resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
-        this.w = this.canvas.width;
-        this.h = this.canvas.height;
-        this.centerX = this.w * 0.5;
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
     }
-
+    
     init() {
         this.particles = [];
+        
+        // Create much wider waterfall stream
+        this.particleCount = 300; // Increased for denser water
+        
         for (let i = 0; i < this.particleCount; i++) {
-            this.particles.push(this.createParticle(true));
+            this.particles.push({
+                x: this.width * 0.5 + (Math.random() - 0.5) * 400, // Wider stream
+                y: Math.random() * this.height * 0.4,
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: Math.random() * 4 + 3,
+                size: Math.random() * 4 + 2,
+                opacity: Math.random() * 0.7 + 0.3,
+                hue: 200 + Math.random() * 30,
+                life: Math.random(),
+            });
         }
+        
+        // Create rock formations on left and right sides
+        this.leftRocks = this.generateRockFormation('left');
+        this.rightRocks = this.generateRockFormation('right');
     }
-
-    createParticle(randomY = false) {
-        const x = this.centerX + (Math.random() - 0.5) * this.spawnBandWidth;
-        const y = randomY ? Math.random() * this.h : -20 - Math.random() * 200;
-
-        return {
-            x,
-            y,
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: 2.5 + Math.random() * 4.0,
-            size: 1.0 + Math.random() * 2.2,
-            opacity: 0.25 + Math.random() * 0.55,
-            hue: 200 + Math.random() * 25
-        };
-    }
-
-    drawBackground() {
-        const g = this.ctx.createLinearGradient(0, 0, 0, this.h);
-        g.addColorStop(0, 'rgba(6, 10, 18, 1)');
-        g.addColorStop(0.6, 'rgba(10, 14, 24, 1)');
-        g.addColorStop(1, 'rgba(6, 10, 18, 1)');
-        this.ctx.fillStyle = g;
-        this.ctx.fillRect(0, 0, this.w, this.h);
-    }
-
-    update() {
-        this.time++;
-
-        const wind = Math.sin(this.time * 0.003) * this.windStrength;
-
-        for (const p of this.particles) {
-            p.vx += wind + (Math.random() - 0.5) * 0.05;
-            p.vx *= 0.985;
-
-            p.y += p.vy;
-            p.x += p.vx;
-
-            // Soft pull back to center stream
-            const pull = (this.centerX - p.x) * 0.0008;
-            p.vx += pull;
-
-            // Slight fade near bottom
-            if (p.y > this.h * 0.85) p.opacity -= 0.006;
-
-            // Respawn
-            if (p.y > this.h + 40 || p.opacity <= 0) {
-                const np = this.createParticle(false);
-                p.x = np.x;
-                p.y = np.y;
-                p.vx = np.vx;
-                p.vy = np.vy;
-                p.size = np.size;
-                p.opacity = np.opacity;
-                p.hue = np.hue;
+    
+    generateRockFormation(side) {
+        const rocks = [];
+        const baseX = side === 'left' ? 0 : this.width;
+        const direction = side === 'left' ? 1 : -1;
+        
+        // Create layered rock formations with very visible stone colors
+        const layers = 3;
+        for (let layer = 0; layer < layers; layer++) {
+            const points = [];
+            const segments = 25;
+            const layerDepth = layer * 50 * direction;
+            
+            for (let i = 0; i <= segments; i++) {
+                const y = (i / segments) * this.height;
+                
+                // Create irregular, jutting rock edges
+                const baseWidth = 350 + layer * 30;
+                const noise = Math.sin(i * 0.4 + layer) * 70 + Math.cos(i * 0.6) * 50;
+                const juttingEdge = Math.random() > 0.5 ? Math.random() * 100 : 0;
+                
+                const x = baseX + (baseWidth + noise + juttingEdge) * direction + layerDepth;
+                
+                points.push({ x, y });
             }
+            
+            // Very visible dark stone colors - solid and opaque
+            const stoneColors = [
+                'rgba(50, 55, 65, 1)',      // Medium dark grey (frontmost)
+                'rgba(35, 40, 48, 1)',      // Darker grey
+                'rgba(25, 28, 35, 1)'       // Very dark grey/black
+            ];
+            
+            rocks.push({
+                points,
+                color: stoneColors[layer],
+                layer
+            });
         }
+        
+        return rocks;
     }
-
-    drawParticles() {
-        for (const p of this.particles) {
+    
+    drawRockFormations() {
+        // Draw left rock formations
+        this.leftRocks.forEach((rock, index) => {
             this.ctx.save();
-            this.ctx.globalAlpha = Math.max(0, Math.min(1, p.opacity));
-
-            // Glow blob
-            const r = p.size * 3.2;
-            const grad = this.ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-            grad.addColorStop(0, `hsla(${p.hue}, 85%, 65%, 0.85)`);
-            grad.addColorStop(0.5, `hsla(${p.hue}, 75%, 55%, 0.35)`);
-            grad.addColorStop(1, `hsla(${p.hue}, 70%, 45%, 0)`);
-
-            this.ctx.fillStyle = grad;
+            
             this.ctx.beginPath();
-            this.ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            this.ctx.moveTo(0, 0);
+            
+            rock.points.forEach(point => {
+                this.ctx.lineTo(point.x, point.y);
+            });
+            
+            this.ctx.lineTo(0, this.height);
+            this.ctx.closePath();
+            
+            // Fill with solid stone color
+            this.ctx.fillStyle = rock.color;
             this.ctx.fill();
-
-            // Faint streak
-            this.ctx.globalAlpha *= 0.35;
-            this.ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, 0.35)`;
+            
+            // Add strong edge highlights to make rocks very visible
+            this.ctx.beginPath();
+            rock.points.forEach((point, i) => {
+                if (i === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+            });
+            
+            // Bright edge highlights
+            if (index === 0) {
+                this.ctx.strokeStyle = 'rgba(100, 120, 140, 0.8)';
+                this.ctx.lineWidth = 4;
+            } else {
+                this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.6)';
+                this.ctx.lineWidth = 3;
+            }
+            this.ctx.stroke();
+            
+            this.ctx.restore();
+        });
+        
+        // Draw right rock formations
+        this.rightRocks.forEach((rock, index) => {
+            this.ctx.save();
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.width, 0);
+            
+            rock.points.forEach(point => {
+                this.ctx.lineTo(point.x, point.y);
+            });
+            
+            this.ctx.lineTo(this.width, this.height);
+            this.ctx.closePath();
+            
+            // Fill with solid stone color
+            this.ctx.fillStyle = rock.color;
+            this.ctx.fill();
+            
+            // Add strong edge highlights
+            this.ctx.beginPath();
+            rock.points.forEach((point, i) => {
+                if (i === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+            });
+            
+            // Bright edge highlights
+            if (index === 0) {
+                this.ctx.strokeStyle = 'rgba(100, 120, 140, 0.8)';
+                this.ctx.lineWidth = 4;
+            } else {
+                this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.6)';
+                this.ctx.lineWidth = 3;
+            }
+            this.ctx.stroke();
+            
+            this.ctx.restore();
+        });
+    }
+    
+    updateParticles() {
+        this.particles.forEach(particle => {
+            // Natural waterfall physics
+            particle.y += particle.vy;
+            particle.x += particle.vx;
+            
+            // Gravity acceleration
+            particle.vy += 0.15;
+            
+            // Air resistance
+            particle.vx *= 0.99;
+            
+            // Slight turbulence in the center
+            particle.vx += (Math.random() - 0.5) * 0.2;
+            
+            // Check collision with left rocks
+            if (particle.x < this.width * 0.3) {
+                const leftEdge = this.getLeftRockEdge(particle.y);
+                if (particle.x < leftEdge) {
+                    particle.x = leftEdge;
+                    particle.vx = Math.abs(particle.vx) * 0.6; // Bounce right
+                    particle.vy *= 0.8; // Lose some downward momentum
+                    
+                    // Create splash effect
+                    particle.opacity *= 0.7;
+                }
+            }
+            
+            // Check collision with right rocks
+            if (particle.x > this.width * 0.7) {
+                const rightEdge = this.getRightRockEdge(particle.y);
+                if (particle.x > rightEdge) {
+                    particle.x = rightEdge;
+                    particle.vx = -Math.abs(particle.vx) * 0.6; // Bounce left
+                    particle.vy *= 0.8; // Lose some downward momentum
+                    
+                    // Create splash effect
+                    particle.opacity *= 0.7;
+                }
+            }
+            
+            // Update life
+            particle.life += 0.01;
+            
+            // Fade as particles fall
+            if (particle.y > this.height * 0.7) {
+                particle.opacity -= 0.02;
+            }
+            
+            // Reset particle at top when it reaches bottom or fades
+            if (particle.y > this.height || particle.opacity <= 0) {
+                particle.x = this.width * 0.5 + (Math.random() - 0.5) * 400;
+                particle.y = Math.random() * 50;
+                particle.vx = (Math.random() - 0.5) * 1.2;
+                particle.vy = Math.random() * 4 + 3;
+                particle.opacity = Math.random() * 0.7 + 0.3;
+                particle.life = 0;
+            }
+        });
+    }
+    
+    getLeftRockEdge(y) {
+        // Get the x position of the left rock edge at height y
+        const normalizedY = y / this.height;
+        const index = Math.floor(normalizedY * 29);
+        
+        if (this.leftRocks[0] && this.leftRocks[0].points[index]) {
+            return this.leftRocks[0].points[index].x;
+        }
+        return 0;
+    }
+    
+    getRightRockEdge(y) {
+        // Get the x position of the right rock edge at height y
+        const normalizedY = y / this.height;
+        const index = Math.floor(normalizedY * 29);
+        
+        if (this.rightRocks[0] && this.rightRocks[0].points[index]) {
+            return this.rightRocks[0].points[index].x;
+        }
+        return this.width;
+    }
+    
+    drawParticles() {
+        this.particles.forEach(particle => {
+            this.ctx.save();
+            this.ctx.globalAlpha = particle.opacity;
+            
+            // Create glowing particle effect
+            const gradient = this.ctx.createRadialGradient(
+                particle.x, particle.y, 0,
+                particle.x, particle.y, particle.size * 3
+            );
+            
+            gradient.addColorStop(0, `hsla(${particle.hue}, 80%, 60%, 0.9)`);
+            gradient.addColorStop(0.5, `hsla(${particle.hue}, 70%, 50%, 0.5)`);
+            gradient.addColorStop(1, `hsla(${particle.hue}, 60%, 40%, 0)`);
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(particle.x, particle.y, particle.size * 3, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Add motion blur effect
+            this.ctx.globalAlpha = particle.opacity * 0.5;
+            this.ctx.fillStyle = `hsla(${particle.hue}, 70%, 55%, 0.3)`;
             this.ctx.beginPath();
             this.ctx.ellipse(
-                p.x,
-                p.y - p.vy * 1.2,
-                p.size * 0.7,
-                p.size * 3.0,
-                0,
-                0,
+                particle.x, 
+                particle.y - particle.vy, 
+                particle.size, 
+                particle.size * 2, 
+                0, 
+                0, 
                 Math.PI * 2
             );
             this.ctx.fill();
-
+            
             this.ctx.restore();
-        }
+        });
     }
-
+    
+    drawMist() {
+        this.ctx.save();
+        
+        // Subtle mist at the base where water hits
+        const mistY = this.height * 0.75;
+        const mistGradient = this.ctx.createLinearGradient(0, mistY, 0, this.height);
+        
+        mistGradient.addColorStop(0, 'rgba(59, 130, 246, 0)');
+        mistGradient.addColorStop(0.3, `rgba(59, 130, 246, ${0.06 + Math.sin(this.time * 0.02) * 0.02})`);
+        mistGradient.addColorStop(1, `rgba(6, 182, 212, ${0.10 + Math.cos(this.time * 0.015) * 0.03})`);
+        
+        this.ctx.fillStyle = mistGradient;
+        this.ctx.fillRect(this.width * 0.3, mistY, this.width * 0.4, this.height - mistY);
+        
+        this.ctx.restore();
+    }
+    
+    drawBackground() {
+        // Animated gradient background
+        const bgGradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
+        
+        const hue1 = 210 + Math.sin(this.time * 0.001) * 5;
+        const hue2 = 200 + Math.cos(this.time * 0.0015) * 5;
+        
+        bgGradient.addColorStop(0, `hsla(${hue1}, 40%, 8%, 1)`);
+        bgGradient.addColorStop(0.5, `hsla(${hue2}, 50%, 12%, 0.8)`);
+        bgGradient.addColorStop(1, `hsla(${hue1}, 40%, 8%, 1)`);
+        
+        this.ctx.fillStyle = bgGradient;
+        this.ctx.fillRect(0, 0, this.width, this.height);
+    }
+    
     animate() {
-        this.ctx.clearRect(0, 0, this.w, this.h);
+        this.time++;
+        
         this.drawBackground();
-        this.update();
+        // Draw water FIRST (behind rocks)
+        this.updateParticles();
         this.drawParticles();
+        this.drawMist();
+        // Draw rocks LAST (in front of water)
+        this.drawRockFormations();
+        
         requestAnimationFrame(() => this.animate());
     }
-}
-
-
-// Custom cursor tracking
-function initCustomCursor() {
-    const cursor = document.createElement('div');
-    cursor.style.cssText = `
-        position: fixed;
-        width: 20px;
-        height: 20px;
-        border: 2px solid #3b82f6;
-        border-radius: 50%;
-        background: rgba(59, 130, 246, 0.2);
-        pointer-events: none;
-        z-index: 10000;
-        transform: translate(-50%, -50%);
-        transition: width 0.15s ease, height 0.15s ease, background 0.15s ease;
-        mix-blend-mode: screen;
-    `;
-    document.body.appendChild(cursor);
-    
-    document.addEventListener('mousemove', (e) => {
-        cursor.style.left = e.clientX + 'px';
-        cursor.style.top = e.clientY + 'px';
-    });
-    
-    document.addEventListener('mousedown', () => {
-        cursor.style.width = '16px';
-        cursor.style.height = '16px';
-        cursor.style.background = 'rgba(59, 130, 246, 0.5)';
-    });
-    
-    document.addEventListener('mouseup', () => {
-        cursor.style.width = '20px';
-        cursor.style.height = '20px';
-        cursor.style.background = 'rgba(59, 130, 246, 0.2)';
-    });
 }
 
 // Scroll Animations
@@ -277,11 +445,42 @@ function initParallax() {
 
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize custom cursor
-    initCustomCursor();
+    // Custom cursor tracking
+    const cursor = document.createElement('div');
+    cursor.style.cssText = `
+        position: fixed;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        background: rgba(59, 130, 246, 0.2);
+        pointer-events: none;
+        z-index: 10000;
+        transform: translate(-50%, -50%);
+        transition: width 0.15s ease, height 0.15s ease, background 0.15s ease;
+        mix-blend-mode: screen;
+    `;
+    document.body.appendChild(cursor);
     
-    // Initialize valley water flow animation
-    new SimpleParticleWaterfall('waterfallCanvas');
+    document.addEventListener('mousemove', (e) => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+    });
+    
+    document.addEventListener('mousedown', () => {
+        cursor.style.width = '16px';
+        cursor.style.height = '16px';
+        cursor.style.background = 'rgba(59, 130, 246, 0.5)';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        cursor.style.width = '20px';
+        cursor.style.height = '20px';
+        cursor.style.background = 'rgba(59, 130, 246, 0.2)';
+    });
+    
+    // Initialize waterfall animation
+    new WaterfallAnimation('waterfallCanvas');
     
     // Initialize scroll animations
     new ScrollAnimations();
