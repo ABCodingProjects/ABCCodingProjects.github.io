@@ -52,22 +52,28 @@ class WaterfallAnimation {
         const baseX = side === 'left' ? 0 : this.width;
         const direction = side === 'left' ? 1 : -1;
         
-        // Create layered rock formations with very visible stone colors
+        // Create layered rock formations with smooth, water-eroded edges
         const layers = 3;
         for (let layer = 0; layer < layers; layer++) {
             const points = [];
-            const segments = 25;
+            const segments = 50; // More segments for smoother curves
             const layerDepth = layer * 50 * direction;
             
             for (let i = 0; i <= segments; i++) {
                 const y = (i / segments) * this.height;
                 
-                // Create irregular, jutting rock edges
+                // Create smooth, flowing curves - like water erosion
                 const baseWidth = 350 + layer * 30;
-                const noise = Math.sin(i * 0.4 + layer) * 70 + Math.cos(i * 0.6) * 50;
-                const juttingEdge = Math.random() > 0.5 ? Math.random() * 100 : 0;
                 
-                const x = baseX + (baseWidth + noise + juttingEdge) * direction + layerDepth;
+                // Gentle, natural wave patterns (erosion effect)
+                const smoothCurve1 = Math.sin(i * 0.15) * 60;
+                const smoothCurve2 = Math.cos(i * 0.08) * 40;
+                const smoothCurve3 = Math.sin(i * 0.25 + layer) * 30;
+                
+                // Combine for organic, smooth curves
+                const erosionPattern = smoothCurve1 + smoothCurve2 + smoothCurve3;
+                
+                const x = baseX + (baseWidth + erosionPattern) * direction + layerDepth;
                 
                 points.push({ x, y });
             }
@@ -108,7 +114,7 @@ class WaterfallAnimation {
             this.ctx.fillStyle = rock.color;
             this.ctx.fill();
             
-            // Add strong edge highlights to make rocks very visible
+            // Add soft edge highlights for smooth, eroded look
             this.ctx.beginPath();
             rock.points.forEach((point, i) => {
                 if (i === 0) {
@@ -118,13 +124,17 @@ class WaterfallAnimation {
                 }
             });
             
-            // Bright edge highlights
+            // Soft, subtle highlights - water-polished stone
             if (index === 0) {
-                this.ctx.strokeStyle = 'rgba(100, 120, 140, 0.8)';
-                this.ctx.lineWidth = 4;
-            } else {
-                this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.6)';
+                this.ctx.strokeStyle = 'rgba(90, 110, 130, 0.6)';
                 this.ctx.lineWidth = 3;
+                this.ctx.lineJoin = 'round'; // Smooth rounded corners
+                this.ctx.lineCap = 'round';
+            } else {
+                this.ctx.strokeStyle = 'rgba(70, 85, 100, 0.4)';
+                this.ctx.lineWidth = 2;
+                this.ctx.lineJoin = 'round';
+                this.ctx.lineCap = 'round';
             }
             this.ctx.stroke();
             
@@ -149,7 +159,7 @@ class WaterfallAnimation {
             this.ctx.fillStyle = rock.color;
             this.ctx.fill();
             
-            // Add strong edge highlights
+            // Add soft edge highlights
             this.ctx.beginPath();
             rock.points.forEach((point, i) => {
                 if (i === 0) {
@@ -159,13 +169,17 @@ class WaterfallAnimation {
                 }
             });
             
-            // Bright edge highlights
+            // Soft, subtle highlights - water-polished stone
             if (index === 0) {
-                this.ctx.strokeStyle = 'rgba(100, 120, 140, 0.8)';
-                this.ctx.lineWidth = 4;
-            } else {
-                this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.6)';
+                this.ctx.strokeStyle = 'rgba(90, 110, 130, 0.6)';
                 this.ctx.lineWidth = 3;
+                this.ctx.lineJoin = 'round';
+                this.ctx.lineCap = 'round';
+            } else {
+                this.ctx.strokeStyle = 'rgba(70, 85, 100, 0.4)';
+                this.ctx.lineWidth = 2;
+                this.ctx.lineJoin = 'round';
+                this.ctx.lineCap = 'round';
             }
             this.ctx.stroke();
             
