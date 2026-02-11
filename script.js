@@ -1,12 +1,12 @@
-// Mountain with Water Flow Animation
-class MountainWaterfall {
+// Valley with Flowing Water Animation
+class ValleyWaterFlow {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         if (!this.canvas) return;
         
         this.ctx = this.canvas.getContext('2d');
         this.particles = [];
-        this.particleCount = 600; // Much more particles for continuous flow
+        this.particleCount = 500;
         this.time = 0;
         
         this.resize();
@@ -26,121 +26,130 @@ class MountainWaterfall {
     init() {
         this.particles = [];
         
-        // Create mountain shape
-        this.mountain = this.generateMountain();
+        // Create valley shape - U-shaped with smooth curves
+        this.valley = this.generateValley();
         
-        // Water source point (partway up the mountain center)
-        this.waterSource = {
-            x: this.width * 0.5,
-            y: this.height * 0.30 // Water starts 30% down from top
-        };
-        
-        // Create water particles that fall straight down
+        // Create water particles that flow down the valley
         for (let i = 0; i < this.particleCount; i++) {
             this.particles.push(this.createParticle());
         }
     }
     
+    generateValley() {
+        const leftWall = [];
+        const rightWall = [];
+        const valleyFloor = [];
+        const segments = 100;
+        
+        const valleyWidth = this.width * 0.3; // Valley opening width
+        const valleyCenterX = this.width * 0.5;
+        
+        for (let i = 0; i <= segments; i++) {
+            const y = (i / segments) * this.height;
+            const progress = i / segments;
+            
+            // Valley gets narrower as it goes down, then opens up
+            const narrowing = Math.sin(progress * Math.PI * 0.7) * 0.3 + 0.7;
+            const currentWidth = (valleyWidth * narrowing) / 2;
+            
+            // Add curves and natural variations to valley walls
+            const curve = Math.sin(progress * Math.PI * 2) * 40;
+            const detail = Math.cos(progress * Math.PI * 4) * 15;
+            
+            leftWall.push({
+                x: valleyCenterX - currentWidth + curve + detail,
+                y: y
+            });
+            
+            rightWall.push({
+                x: valleyCenterX + currentWidth + curve - detail,
+                y: y
+            });
+            
+            // Valley floor follows the center with a curve
+            valleyFloor.push({
+                x: valleyCenterX + curve * 0.5,
+                y: y
+            });
+        }
+        
+        return { leftWall, rightWall, valleyFloor };
+    }
+    
+    getValleyWidth(y) {
+        // Get valley width at specific y position
+        const index = Math.floor((y / this.height) * 100);
+        if (this.valley.leftWall[index] && this.valley.rightWall[index]) {
+            return {
+                left: this.valley.leftWall[index].x,
+                right: this.valley.rightWall[index].x,
+                center: this.valley.valleyFloor[index].x
+            };
+        }
+        return { left: 0, right: this.width, center: this.width / 2 };
+    }
+    
     createParticle() {
-        // Particles distributed throughout the entire fall path for continuous flow
+        // Particles start at top of valley
+        const startY = Math.random() * this.height * 0.3;
+        const valleyInfo = this.getValleyWidth(startY);
+        
         return {
-            x: this.waterSource.x + (Math.random() - 0.5) * 100,
-            y: this.waterSource.y + Math.random() * (this.height - this.waterSource.y), // Spread throughout fall
-            vx: (Math.random() - 0.5) * 0.8,
-            vy: Math.random() * 3 + 2,
+            x: valleyInfo.center + (Math.random() - 0.5) * 80,
+            y: startY,
+            vx: 0,
+            vy: Math.random() * 2 + 1,
             size: Math.random() * 3 + 1.5,
             opacity: Math.random() * 0.7 + 0.3,
             hue: 200 + Math.random() * 30,
-            life: 0
+            life: 0,
+            followPath: true
         };
-    }
-    
-    generateMountain() {
-        const points = [];
-        const segments = 200;
-        const baseHeight = this.height * 0.80;
-        
-        // Define distinct peaks like a real mountain range
-        const peaks = [
-            { position: 0.25, height: 250, width: 0.12 },  // Left peak
-            { position: 0.50, height: 400, width: 0.15 },  // CENTER - tallest
-            { position: 0.70, height: 280, width: 0.13 },  // Right peak
-        ];
-        
-        for (let i = 0; i <= segments; i++) {
-            const x = (i / segments) * this.width;
-            const normalizedX = i / segments;
-            
-            let y = baseHeight;
-            let maxPeakInfluence = 0;
-            
-            // Calculate influence from each peak
-            peaks.forEach(peak => {
-                const distanceFromPeak = Math.abs(normalizedX - peak.position);
-                
-                if (distanceFromPeak < peak.width) {
-                    // Smooth triangular peak shape
-                    const influence = (1 - distanceFromPeak / peak.width);
-                    const smoothInfluence = Math.pow(influence, 1.5); // Smooth curve
-                    const peakContribution = smoothInfluence * peak.height;
-                    
-                    if (peakContribution > maxPeakInfluence) {
-                        maxPeakInfluence = peakContribution;
-                    }
-                }
-            });
-            
-            y -= maxPeakInfluence;
-            
-            // Add natural geological features
-            const largeCurve = Math.sin(i * 0.08) * 25;
-            const mediumDetail = Math.cos(i * 0.3) * 12;
-            const fineDetail = Math.sin(i * 0.9) * 6;
-            
-            y += largeCurve + mediumDetail + fineDetail;
-            
-            // Ensure base doesn't go below screen
-            y = Math.min(y, baseHeight);
-            
-            points.push({ x, y });
-        }
-        
-        return points;
-    }
-    
-    getMountainHeightAt(x) {
-        // Get mountain height at specific x coordinate
-        const normalizedX = x / this.width;
-        const index = Math.floor(normalizedX * 100);
-        
-        if (this.mountain[index]) {
-            return this.mountain[index].y;
-        }
-        return this.height;
     }
     
     updateParticles() {
         this.particles.forEach(particle => {
-            // Simple vertical fall with slight horizontal drift
+            // Get valley information at current position
+            const valleyInfo = this.getValleyWidth(particle.y);
+            
+            // Pull particle toward valley center
+            const centerPull = (valleyInfo.center - particle.x) * 0.08;
+            particle.vx += centerPull;
+            
+            // Keep particles within valley walls
+            if (particle.x < valleyInfo.left + 10) {
+                particle.x = valleyInfo.left + 10;
+                particle.vx = Math.abs(particle.vx) * 0.5;
+            }
+            if (particle.x > valleyInfo.right - 10) {
+                particle.x = valleyInfo.right - 10;
+                particle.vx = -Math.abs(particle.vx) * 0.5;
+            }
+            
+            // Apply physics
             particle.x += particle.vx;
             particle.y += particle.vy;
             
             // Gravity acceleration
-            particle.vy += 0.15;
+            particle.vy += 0.12;
             
-            // Slight horizontal turbulence
-            particle.vx += (Math.random() - 0.5) * 0.3;
+            // Add turbulence
+            particle.vx += (Math.random() - 0.5) * 0.4;
             
-            // Air resistance
-            particle.vx *= 0.98;
+            // Friction/resistance
+            particle.vx *= 0.97;
             
-            // Fade as particles fall lower
-            if (particle.y > this.height * 0.75) {
+            // Limit speeds
+            particle.vx = Math.max(-3, Math.min(3, particle.vx));
+            particle.vy = Math.min(particle.vy, 8);
+            
+            // Fade at bottom
+            if (particle.y > this.height * 0.8) {
                 particle.opacity -= 0.02;
             }
             
             // Reset particle when off screen
-            if (particle.y > this.height || particle.opacity <= 0 || particle.x < 0 || particle.x > this.width) {
+            if (particle.y > this.height || particle.opacity <= 0) {
                 const newParticle = this.createParticle();
                 particle.x = newParticle.x;
                 particle.y = newParticle.y;
@@ -168,111 +177,70 @@ class MountainWaterfall {
         this.ctx.fillRect(0, 0, this.width, this.height);
     }
     
-    drawMountain() {
+    drawValley() {
         this.ctx.save();
         
-        // Draw mountain base silhouette
+        // Draw left valley wall
         this.ctx.beginPath();
-        this.ctx.moveTo(0, this.height);
-        
-        this.mountain.forEach(point => {
+        this.ctx.moveTo(0, 0);
+        this.valley.leftWall.forEach(point => {
             this.ctx.lineTo(point.x, point.y);
         });
-        
-        this.ctx.lineTo(this.width, this.height);
+        this.ctx.lineTo(0, this.height);
         this.ctx.closePath();
         
-        // Main mountain gradient - inspired by reference
-        const mountainGradient = this.ctx.createLinearGradient(0, this.height * 0.2, 0, this.height);
-        mountainGradient.addColorStop(0, 'rgba(75, 80, 95, 1)');     // Lighter peaks
-        mountainGradient.addColorStop(0.4, 'rgba(50, 55, 68, 1)');   // Mid slopes
-        mountainGradient.addColorStop(0.7, 'rgba(35, 40, 50, 1)');   // Lower slopes
-        mountainGradient.addColorStop(1, 'rgba(20, 24, 32, 1)');     // Dark base
+        const leftGradient = this.ctx.createLinearGradient(0, 0, this.width * 0.4, 0);
+        leftGradient.addColorStop(0, 'rgba(25, 28, 35, 1)');
+        leftGradient.addColorStop(0.7, 'rgba(45, 50, 60, 1)');
+        leftGradient.addColorStop(1, 'rgba(55, 60, 70, 0.3)');
         
-        this.ctx.fillStyle = mountainGradient;
+        this.ctx.fillStyle = leftGradient;
         this.ctx.fill();
         
-        // Add subtle snow on peaks
-        this.ctx.save();
-        this.ctx.globalAlpha = 0.5;
-        
-        const snowGradient = this.ctx.createLinearGradient(0, this.height * 0.2, 0, this.height * 0.45);
-        snowGradient.addColorStop(0, 'rgba(180, 190, 205, 0.7)');
-        snowGradient.addColorStop(0.6, 'rgba(120, 135, 155, 0.3)');
-        snowGradient.addColorStop(1, 'rgba(80, 95, 115, 0)');
-        
-        this.ctx.fillStyle = snowGradient;
-        this.ctx.fill();
-        this.ctx.restore();
-        
-        // Add subtle shading on sides for depth
-        // Left shadow
-        this.ctx.save();
-        const leftShadow = this.ctx.createLinearGradient(0, 0, this.width * 0.2, 0);
-        leftShadow.addColorStop(0, 'rgba(10, 12, 18, 0.5)');
-        leftShadow.addColorStop(1, 'rgba(10, 12, 18, 0)');
-        
-        this.ctx.fillStyle = leftShadow;
+        // Left wall edge highlight
         this.ctx.beginPath();
-        this.ctx.moveTo(0, this.height);
-        for (let i = 0; i < this.mountain.length * 0.25; i++) {
-            this.ctx.lineTo(this.mountain[i].x, this.mountain[i].y);
-        }
-        this.ctx.lineTo(0, this.height);
-        this.ctx.fill();
-        this.ctx.restore();
-        
-        // Right shadow
-        this.ctx.save();
-        const rightShadow = this.ctx.createLinearGradient(this.width, 0, this.width * 0.8, 0);
-        rightShadow.addColorStop(0, 'rgba(10, 12, 18, 0.5)');
-        rightShadow.addColorStop(1, 'rgba(10, 12, 18, 0)');
-        
-        this.ctx.fillStyle = rightShadow;
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.width, this.height);
-        for (let i = this.mountain.length - 1; i > this.mountain.length * 0.75; i--) {
-            this.ctx.lineTo(this.mountain[i].x, this.mountain[i].y);
-        }
-        this.ctx.lineTo(this.width, this.height);
-        this.ctx.fill();
-        this.ctx.restore();
-        
-        // Clean mountain edge
-        this.ctx.beginPath();
-        this.mountain.forEach((point, i) => {
+        this.valley.leftWall.forEach((point, i) => {
             if (i === 0) {
                 this.ctx.moveTo(point.x, point.y);
             } else {
                 this.ctx.lineTo(point.x, point.y);
             }
         });
-        
-        this.ctx.strokeStyle = 'rgba(100, 115, 135, 0.4)';
-        this.ctx.lineWidth = 1.5;
+        this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.5)';
+        this.ctx.lineWidth = 2;
         this.ctx.lineJoin = 'round';
         this.ctx.stroke();
         
-        this.ctx.restore();
-    }
-    
-    drawWaterSource() {
-        // Draw subtle glow at water source
-        this.ctx.save();
-        
-        const glowGradient = this.ctx.createRadialGradient(
-            this.waterSource.x, this.waterSource.y, 0,
-            this.waterSource.x, this.waterSource.y, 60
-        );
-        
-        glowGradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
-        glowGradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.1)');
-        glowGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-        
-        this.ctx.fillStyle = glowGradient;
+        // Draw right valley wall
         this.ctx.beginPath();
-        this.ctx.arc(this.waterSource.x, this.waterSource.y, 60, 0, Math.PI * 2);
+        this.ctx.moveTo(this.width, 0);
+        this.valley.rightWall.forEach(point => {
+            this.ctx.lineTo(point.x, point.y);
+        });
+        this.ctx.lineTo(this.width, this.height);
+        this.ctx.closePath();
+        
+        const rightGradient = this.ctx.createLinearGradient(this.width, 0, this.width * 0.6, 0);
+        rightGradient.addColorStop(0, 'rgba(25, 28, 35, 1)');
+        rightGradient.addColorStop(0.7, 'rgba(45, 50, 60, 1)');
+        rightGradient.addColorStop(1, 'rgba(55, 60, 70, 0.3)');
+        
+        this.ctx.fillStyle = rightGradient;
         this.ctx.fill();
+        
+        // Right wall edge highlight
+        this.ctx.beginPath();
+        this.valley.rightWall.forEach((point, i) => {
+            if (i === 0) {
+                this.ctx.moveTo(point.x, point.y);
+            } else {
+                this.ctx.lineTo(point.x, point.y);
+            }
+        });
+        this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.5)';
+        this.ctx.lineWidth = 2;
+        this.ctx.lineJoin = 'round';
+        this.ctx.stroke();
         
         this.ctx.restore();
     }
@@ -297,7 +265,7 @@ class MountainWaterfall {
             this.ctx.arc(particle.x, particle.y, particle.size * 3, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Add motion blur effect for falling water
+            // Add motion blur
             this.ctx.globalAlpha = particle.opacity * 0.4;
             this.ctx.fillStyle = `hsla(${particle.hue}, 70%, 55%, 0.3)`;
             this.ctx.beginPath();
@@ -316,14 +284,33 @@ class MountainWaterfall {
         });
     }
     
+    drawWaterGlow() {
+        // Add subtle glow along the valley floor where water flows
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.15;
+        
+        const glowGradient = this.ctx.createLinearGradient(
+            this.width * 0.35, 0,
+            this.width * 0.65, 0
+        );
+        glowGradient.addColorStop(0, 'rgba(59, 130, 246, 0)');
+        glowGradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.3)');
+        glowGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        
+        this.ctx.fillStyle = glowGradient;
+        this.ctx.fillRect(this.width * 0.35, 0, this.width * 0.3, this.height);
+        
+        this.ctx.restore();
+    }
+    
     animate() {
         this.time++;
         
         this.ctx.clearRect(0, 0, this.width, this.height);
         
         this.drawBackground();
-        this.drawMountain();
-        this.drawWaterSource();
+        this.drawWaterGlow();
+        this.drawValley();
         this.updateParticles();
         this.drawParticles();
         
@@ -473,8 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize custom cursor
     initCustomCursor();
     
-    // Initialize mountain waterfall animation
-    new MountainWaterfall('waterfallCanvas');
+    // Initialize valley water flow animation
+    new ValleyWaterFlow('waterfallCanvas');
     
     // Initialize scroll animations
     new ScrollAnimations();
