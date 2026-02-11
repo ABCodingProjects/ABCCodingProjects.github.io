@@ -1,205 +1,243 @@
-// Simple Particle Waterfall Animation (constant flow) — denser + multi-blue + more solid stream
+// Simple Particle Waterfall Animation (constant flow) — "digital" particles (dimmer, crisper)
 class SimpleParticleWaterfall {
-  constructor(canvasId) {
-    this.canvas = document.getElementById(canvasId);
-    if (!this.canvas) return;
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) return;
 
-    this.ctx = this.canvas.getContext('2d');
-    this.particles = [];
-    this.time = 0;
+        this.ctx = this.canvas.getContext('2d');
+        this.particles = [];
+        this.time = 0;
 
-    // Tunables
-    this.particleCount = 1400;   // more particles
-    this.spawnBandWidth = 190;   // narrower stream => more solid
-    this.windStrength = 0.08;    // less sideways drift
-    this.centerPull = 0.0019;    // stronger pull to center
-    this.flutter = 0.02;         // less random wobble
-    this.coreBoost = 0.55;       // portion of brighter "core" particles
-    this.maxVx = 1.6;            // clamp sideways velocity
+        // Tuned for wider + less dense + more digital
+        this.particleCount = 650;        // reduced density
+        this.spawnBandWidth = 360;       // much wider stream
+        this.windStrength = 0.08;
+        this.centerPull = 0.0009;        // softer pull (less solid column)
+        this.flutter = 0.02;
+        this.maxVx = 1.2;
 
-    // Blue palette (hues around cyan/blue)
-    this.hues = [192, 198, 204, 210, 216, 222];
+        // Cooler digital blues
+        this.hues = [198, 204, 210, 216];
 
-    this.resize();
-    this.init();
-    this.animate();
+        this.resize();
+        this.init();
+        this.animate();
 
-    window.addEventListener('resize', () => this.resize());
-  }
-
-  // Box–Muller: normal distribution for center-heavy stream
-  randn() {
-    let u = 0, v = 0;
-    while (u === 0) u = Math.random();
-    while (v === 0) v = Math.random();
-    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-  }
-
-  resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    this.w = this.canvas.width;
-    this.h = this.canvas.height;
-    this.centerX = this.w * 0.5;
-  }
-
-  init() {
-    this.particles = [];
-    for (let i = 0; i < this.particleCount; i++) {
-      this.particles.push(this.createParticle(true));
-    }
-  }
-
-  createParticle(randomY = false) {
-    const gaussian = this.randn();
-    const x = this.centerX + gaussian * (this.spawnBandWidth * 0.23);
-    const y = randomY ? Math.random() * this.h : -30 - Math.random() * 260;
-
-    const isCore = Math.random() < this.coreBoost;
-    const baseHue = this.hues[Math.floor(Math.random() * this.hues.length)];
-    const hue = baseHue + (Math.random() - 0.5) * (isCore ? 6 : 12);
-
-    const vy = (isCore ? 4.2 : 2.6) + Math.random() * (isCore ? 4.6 : 3.2);
-
-    return {
-      x,
-      y,
-      vx: (Math.random() - 0.5) * (isCore ? 0.22 : 0.4),
-      vy,
-      size: (isCore ? 1.3 : 0.9) + Math.random() * (isCore ? 2.8 : 2.0),
-      opacity: (isCore ? 0.45 : 0.22) + Math.random() * (isCore ? 0.45 : 0.55),
-      hue,
-      sat: (isCore ? 90 : 80) + Math.random() * 10,
-      lit: (isCore ? 62 : 58) + Math.random() * 10,
-      isCore
-    };
-  }
-
-  drawBackground() {
-    const g = this.ctx.createLinearGradient(0, 0, 0, this.h);
-    g.addColorStop(0, 'rgba(6, 10, 18, 1)');
-    g.addColorStop(0.6, 'rgba(10, 14, 24, 1)');
-    g.addColorStop(1, 'rgba(6, 10, 18, 1)');
-    this.ctx.fillStyle = g;
-    this.ctx.fillRect(0, 0, this.w, this.h);
-  }
-
-  drawStreamCore() {
-    // Subtle continuous column behind particles for a "solid" stream feel
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.22;
-
-    const coreWidth = this.spawnBandWidth * 0.62;
-    const x0 = this.centerX - coreWidth / 2;
-
-    const g = ctx.createLinearGradient(0, 0, 0, this.h);
-    g.addColorStop(0, 'rgba(80, 170, 255, 0.0)');
-    g.addColorStop(0.15, 'rgba(80, 170, 255, 0.22)');
-    g.addColorStop(0.55, 'rgba(60, 145, 255, 0.28)');
-    g.addColorStop(1, 'rgba(40, 120, 255, 0.0)');
-
-    // Edge mask so it fades out left/right
-    const edge = ctx.createLinearGradient(x0, 0, x0 + coreWidth, 0);
-    edge.addColorStop(0, 'rgba(0,0,0,0)');
-    edge.addColorStop(0.18, 'rgba(0,0,0,1)');
-    edge.addColorStop(0.82, 'rgba(0,0,0,1)');
-    edge.addColorStop(1, 'rgba(0,0,0,0)');
-
-    ctx.fillStyle = g;
-    ctx.fillRect(x0, 0, coreWidth, this.h);
-
-    ctx.globalCompositeOperation = 'destination-in';
-    ctx.fillStyle = edge;
-    ctx.fillRect(x0 - 20, 0, coreWidth + 40, this.h);
-
-    ctx.restore();
-  }
-
-  update() {
-    this.time++;
-    const wind = Math.sin(this.time * 0.003) * this.windStrength;
-
-    for (const p of this.particles) {
-      p.vx += wind + (Math.random() - 0.5) * this.flutter;
-
-      const pull = (this.centerX - p.x) * this.centerPull;
-      p.vx += pull;
-
-      p.vx *= 0.975;
-      if (p.vx > this.maxVx) p.vx = this.maxVx;
-      if (p.vx < -this.maxVx) p.vx = -this.maxVx;
-
-      p.y += p.vy;
-      p.x += p.vx;
-
-      if (p.y > this.h * 0.86) p.opacity -= (p.isCore ? 0.004 : 0.007);
-
-      if (p.y > this.h + 50 || p.opacity <= 0) {
-        const np = this.createParticle(false);
-        p.x = np.x;
-        p.y = np.y;
-        p.vx = np.vx;
-        p.vy = np.vy;
-        p.size = np.size;
-        p.opacity = np.opacity;
-        p.hue = np.hue;
-        p.sat = np.sat;
-        p.lit = np.lit;
-        p.isCore = np.isCore;
-      }
-    }
-  }
-
-  drawParticles() {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    for (const p of this.particles) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, p.opacity));
-
-      const r = p.size * (p.isCore ? 3.6 : 3.0);
-      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-      grad.addColorStop(0, `hsla(${p.hue}, ${p.sat}%, ${p.lit + 8}%, 0.95)`);
-      grad.addColorStop(0.45, `hsla(${p.hue}, ${p.sat - 8}%, ${p.lit}%, ${p.isCore ? 0.55 : 0.35})`);
-      grad.addColorStop(1, `hsla(${p.hue}, ${p.sat - 15}%, ${p.lit - 10}%, 0)`);
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.globalAlpha *= (p.isCore ? 0.55 : 0.35);
-      ctx.fillStyle = `hsla(${p.hue}, ${p.sat}%, ${p.lit + 6}%, ${p.isCore ? 0.55 : 0.35})`;
-      ctx.beginPath();
-      ctx.ellipse(
-        p.x,
-        p.y - p.vy * 1.15,
-        p.size * (p.isCore ? 0.85 : 0.65),
-        p.size * (p.isCore ? 3.6 : 3.0),
-        0,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-
-      ctx.restore();
+        window.addEventListener('resize', () => this.resize());
     }
 
-    ctx.restore();
-  }
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.w = this.canvas.width;
+        this.h = this.canvas.height;
+        this.centerX = this.w * 0.5;
+    }
 
-  animate() {
-    this.ctx.clearRect(0, 0, this.w, this.h);
-    this.drawBackground();
-    this.drawStreamCore();
-    this.update();
-    this.drawParticles();
-    requestAnimationFrame(() => this.animate());
-  }
+    init() {
+        this.particles = [];
+        for (let i = 0; i < this.particleCount; i++) {
+            this.particles.push(this.createParticle(true));
+        }
+    }
+
+    createParticle(randomY = false) {
+        const spread = (Math.random() - 0.5) * this.spawnBandWidth;
+        const x = this.centerX + spread;
+
+        const y = randomY ? Math.random() * this.h : -20 - Math.random() * 200;
+
+        const hue = this.hues[Math.floor(Math.random() * this.hues.length)];
+
+        return {
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: 2.5 + Math.random() * 4.5,
+            size: 1 + Math.random() * 1.5,
+            opacity: 0.12 + Math.random() * 0.18,
+            hue,
+            sat: 75 + Math.random() * 10,
+            lit: 58 + Math.random() * 6
+        };
+    }
+
+    drawBackground() {
+        const g = this.ctx.createLinearGradient(0, 0, 0, this.h);
+        g.addColorStop(0, 'rgba(6, 10, 18, 1)');
+        g.addColorStop(1, 'rgba(8, 12, 20, 1)');
+        this.ctx.fillStyle = g;
+        this.ctx.fillRect(0, 0, this.w, this.h);
+    }
+
+    update() {
+        this.time++;
+        const wind = Math.sin(this.time * 0.0025) * this.windStrength;
+
+        for (const p of this.particles) {
+            p.vx += wind + (Math.random() - 0.5) * this.flutter;
+            p.vx += (this.centerX - p.x) * this.centerPull;
+
+            p.vx *= 0.985;
+            if (p.vx > this.maxVx) p.vx = this.maxVx;
+            if (p.vx < -this.maxVx) p.vx = -this.maxVx;
+
+            p.y += p.vy;
+            p.x += p.vx;
+
+            if (p.y > this.h * 0.9) p.opacity -= 0.004;
+
+            if (p.y > this.h + 40 || p.opacity <= 0) {
+                const np = this.createParticle(false);
+                Object.assign(p, np);
+            }
+        }
+    }
+
+    drawParticles() {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+
+        for (const p of this.particles) {
+            const a = Math.max(0, Math.min(1, p.opacity));
+            ctx.globalAlpha = a;
+
+            // Square digital pixel instead of glow circle
+            ctx.fillStyle = `hsla(${p.hue}, ${p.sat}%, ${p.lit}%, 1)`;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+
+            // Very subtle vertical pixel trail
+            ctx.globalAlpha = a * 0.15;
+            ctx.fillRect(p.x, p.y - p.vy * 1.6, 1, p.size * 2.2);
+        }
+
+        ctx.restore();
+    }
+
+    animate() {
+        this.ctx.clearRect(0, 0, this.w, this.h);
+        this.drawBackground();
+        this.update();
+        this.drawParticles();
+        requestAnimationFrame(() => this.animate());
+    }
+}
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.w = this.canvas.width;
+        this.h = this.canvas.height;
+        this.centerX = this.w * 0.5;
+    }
+
+    init() {
+        this.particles = [];
+        for (let i = 0; i < this.particleCount; i++) {
+            this.particles.push(this.createParticle(true));
+        }
+    }
+
+    createParticle(randomY = false) {
+        const x = this.centerX + (Math.random() - 0.5) * this.spawnBandWidth;
+        const y = randomY ? Math.random() * this.h : -20 - Math.random() * 200;
+
+        return {
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: 2.5 + Math.random() * 4.0,
+            size: 1.0 + Math.random() * 2.2,
+            opacity: 0.25 + Math.random() * 0.55,
+            hue: 200 + Math.random() * 25
+        };
+    }
+
+    drawBackground() {
+        const g = this.ctx.createLinearGradient(0, 0, 0, this.h);
+        g.addColorStop(0, 'rgba(6, 10, 18, 1)');
+        g.addColorStop(0.6, 'rgba(10, 14, 24, 1)');
+        g.addColorStop(1, 'rgba(6, 10, 18, 1)');
+        this.ctx.fillStyle = g;
+        this.ctx.fillRect(0, 0, this.w, this.h);
+    }
+
+    update() {
+        this.time++;
+
+        const wind = Math.sin(this.time * 0.003) * this.windStrength;
+
+        for (const p of this.particles) {
+            p.vx += wind + (Math.random() - 0.5) * 0.05;
+            p.vx *= 0.985;
+
+            p.y += p.vy;
+            p.x += p.vx;
+
+            // Soft pull back to center stream
+            const pull = (this.centerX - p.x) * 0.0008;
+            p.vx += pull;
+
+            // Slight fade near bottom
+            if (p.y > this.h * 0.85) p.opacity -= 0.006;
+
+            // Respawn
+            if (p.y > this.h + 40 || p.opacity <= 0) {
+                const np = this.createParticle(false);
+                p.x = np.x;
+                p.y = np.y;
+                p.vx = np.vx;
+                p.vy = np.vy;
+                p.size = np.size;
+                p.opacity = np.opacity;
+                p.hue = np.hue;
+            }
+        }
+    }
+
+    drawParticles() {
+        for (const p of this.particles) {
+            this.ctx.save();
+            this.ctx.globalAlpha = Math.max(0, Math.min(1, p.opacity));
+
+            // Glow blob
+            const r = p.size * 3.2;
+            const grad = this.ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+            grad.addColorStop(0, `hsla(${p.hue}, 85%, 65%, 0.85)`);
+            grad.addColorStop(0.5, `hsla(${p.hue}, 75%, 55%, 0.35)`);
+            grad.addColorStop(1, `hsla(${p.hue}, 70%, 45%, 0)`);
+
+            this.ctx.fillStyle = grad;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Faint streak
+            this.ctx.globalAlpha *= 0.35;
+            this.ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, 0.35)`;
+            this.ctx.beginPath();
+            this.ctx.ellipse(
+                p.x,
+                p.y - p.vy * 1.2,
+                p.size * 0.7,
+                p.size * 3.0,
+                0,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.fill();
+
+            this.ctx.restore();
+        }
+    }
+
+    animate() {
+        this.ctx.clearRect(0, 0, this.w, this.h);
+        this.drawBackground();
+        this.update();
+        this.drawParticles();
+        requestAnimationFrame(() => this.animate());
+    }
 }
 
 
