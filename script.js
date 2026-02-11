@@ -57,47 +57,50 @@ class MountainWaterfall {
     
     generateMountain() {
         const points = [];
-        const segments = 150; // More segments for detailed mountain
-        const baseHeight = this.height * 0.85;
-        const peakHeight = this.height * 0.15;
+        const segments = 200;
+        const baseHeight = this.height * 0.80;
+        
+        // Define distinct peaks like a real mountain range
+        const peaks = [
+            { position: 0.25, height: 250, width: 0.12 },  // Left peak
+            { position: 0.50, height: 400, width: 0.15 },  // CENTER - tallest
+            { position: 0.70, height: 280, width: 0.13 },  // Right peak
+        ];
         
         for (let i = 0; i <= segments; i++) {
             const x = (i / segments) * this.width;
             const normalizedX = i / segments;
             
-            // Create mountain profile
-            const distanceFromPeak = Math.abs(normalizedX - 0.5);
+            let y = baseHeight;
+            let maxPeakInfluence = 0;
             
-            let y;
-            if (distanceFromPeak < 0.45) {
-                // Main mountain body with complex features
-                const mountainHeight = baseHeight - peakHeight;
-                const slope = (distanceFromPeak / 0.45) * mountainHeight;
-                y = peakHeight + slope;
+            // Calculate influence from each peak
+            peaks.forEach(peak => {
+                const distanceFromPeak = Math.abs(normalizedX - peak.position);
                 
-                // Large natural curves
-                const largeCurve = Math.sin(i * 0.15) * 40;
-                const mediumCurve = Math.cos(i * 0.35) * 25;
-                
-                // Ridges and valleys
-                const ridge1 = Math.abs(Math.sin(i * 0.5)) * 30;
-                const ridge2 = Math.abs(Math.cos(i * 0.8)) * 20;
-                const ridge3 = Math.abs(Math.sin(i * 1.2)) * 15;
-                
-                // Fine detail and texture
-                const detail1 = Math.sin(i * 2) * 8;
-                const detail2 = Math.cos(i * 3.5) * 5;
-                const detail3 = Math.sin(i * 5) * 3;
-                
-                // Rocky outcroppings
-                const outcrop = (Math.abs(Math.sin(i * 0.7)) > 0.8) ? Math.random() * 20 : 0;
-                
-                y += largeCurve + mediumCurve + ridge1 + ridge2 + ridge3 + detail1 + detail2 + detail3 + outcrop;
-            } else {
-                // Gentle slopes to edges
-                const edgeFade = ((distanceFromPeak - 0.45) / 0.05);
-                y = baseHeight - (baseHeight - peakHeight) * Math.max(0, 1 - edgeFade);
-            }
+                if (distanceFromPeak < peak.width) {
+                    // Smooth triangular peak shape
+                    const influence = (1 - distanceFromPeak / peak.width);
+                    const smoothInfluence = Math.pow(influence, 1.5); // Smooth curve
+                    const peakContribution = smoothInfluence * peak.height;
+                    
+                    if (peakContribution > maxPeakInfluence) {
+                        maxPeakInfluence = peakContribution;
+                    }
+                }
+            });
+            
+            y -= maxPeakInfluence;
+            
+            // Add natural geological features
+            const largeCurve = Math.sin(i * 0.08) * 25;
+            const mediumDetail = Math.cos(i * 0.3) * 12;
+            const fineDetail = Math.sin(i * 0.9) * 6;
+            
+            y += largeCurve + mediumDetail + fineDetail;
+            
+            // Ensure base doesn't go below screen
+            y = Math.min(y, baseHeight);
             
             points.push({ x, y });
         }
@@ -179,40 +182,40 @@ class MountainWaterfall {
         this.ctx.lineTo(this.width, this.height);
         this.ctx.closePath();
         
-        // Main mountain gradient with more depth
-        const mountainGradient = this.ctx.createLinearGradient(0, this.height * 0.15, 0, this.height);
-        mountainGradient.addColorStop(0, 'rgba(70, 75, 85, 1)');     // Lighter peak
-        mountainGradient.addColorStop(0.3, 'rgba(55, 60, 70, 1)');   // Mid-mountain
-        mountainGradient.addColorStop(0.6, 'rgba(40, 45, 55, 1)');   // Lower slopes
-        mountainGradient.addColorStop(1, 'rgba(25, 28, 35, 1)');     // Dark base
+        // Main mountain gradient - inspired by reference
+        const mountainGradient = this.ctx.createLinearGradient(0, this.height * 0.2, 0, this.height);
+        mountainGradient.addColorStop(0, 'rgba(75, 80, 95, 1)');     // Lighter peaks
+        mountainGradient.addColorStop(0.4, 'rgba(50, 55, 68, 1)');   // Mid slopes
+        mountainGradient.addColorStop(0.7, 'rgba(35, 40, 50, 1)');   // Lower slopes
+        mountainGradient.addColorStop(1, 'rgba(20, 24, 32, 1)');     // Dark base
         
         this.ctx.fillStyle = mountainGradient;
         this.ctx.fill();
         
-        // Add snow cap at the peak
+        // Add subtle snow on peaks
         this.ctx.save();
-        this.ctx.globalAlpha = 0.7;
+        this.ctx.globalAlpha = 0.5;
         
-        const snowGradient = this.ctx.createLinearGradient(0, this.height * 0.15, 0, this.height * 0.35);
-        snowGradient.addColorStop(0, 'rgba(200, 210, 220, 0.8)');
-        snowGradient.addColorStop(0.5, 'rgba(150, 165, 180, 0.4)');
-        snowGradient.addColorStop(1, 'rgba(100, 115, 130, 0)');
+        const snowGradient = this.ctx.createLinearGradient(0, this.height * 0.2, 0, this.height * 0.45);
+        snowGradient.addColorStop(0, 'rgba(180, 190, 205, 0.7)');
+        snowGradient.addColorStop(0.6, 'rgba(120, 135, 155, 0.3)');
+        snowGradient.addColorStop(1, 'rgba(80, 95, 115, 0)');
         
         this.ctx.fillStyle = snowGradient;
         this.ctx.fill();
         this.ctx.restore();
         
-        // Add shadow/depth layers on the sides
+        // Add subtle shading on sides for depth
         // Left shadow
         this.ctx.save();
-        const leftShadow = this.ctx.createLinearGradient(0, 0, this.width * 0.3, 0);
-        leftShadow.addColorStop(0, 'rgba(15, 18, 25, 0.6)');
-        leftShadow.addColorStop(1, 'rgba(15, 18, 25, 0)');
+        const leftShadow = this.ctx.createLinearGradient(0, 0, this.width * 0.2, 0);
+        leftShadow.addColorStop(0, 'rgba(10, 12, 18, 0.5)');
+        leftShadow.addColorStop(1, 'rgba(10, 12, 18, 0)');
         
         this.ctx.fillStyle = leftShadow;
         this.ctx.beginPath();
         this.ctx.moveTo(0, this.height);
-        for (let i = 0; i < this.mountain.length * 0.3; i++) {
+        for (let i = 0; i < this.mountain.length * 0.25; i++) {
             this.ctx.lineTo(this.mountain[i].x, this.mountain[i].y);
         }
         this.ctx.lineTo(0, this.height);
@@ -221,49 +224,21 @@ class MountainWaterfall {
         
         // Right shadow
         this.ctx.save();
-        const rightShadow = this.ctx.createLinearGradient(this.width, 0, this.width * 0.7, 0);
-        rightShadow.addColorStop(0, 'rgba(15, 18, 25, 0.6)');
-        rightShadow.addColorStop(1, 'rgba(15, 18, 25, 0)');
+        const rightShadow = this.ctx.createLinearGradient(this.width, 0, this.width * 0.8, 0);
+        rightShadow.addColorStop(0, 'rgba(10, 12, 18, 0.5)');
+        rightShadow.addColorStop(1, 'rgba(10, 12, 18, 0)');
         
         this.ctx.fillStyle = rightShadow;
         this.ctx.beginPath();
         this.ctx.moveTo(this.width, this.height);
-        for (let i = this.mountain.length - 1; i > this.mountain.length * 0.7; i--) {
+        for (let i = this.mountain.length - 1; i > this.mountain.length * 0.75; i--) {
             this.ctx.lineTo(this.mountain[i].x, this.mountain[i].y);
         }
         this.ctx.lineTo(this.width, this.height);
         this.ctx.fill();
         this.ctx.restore();
         
-        // Add texture lines (ridges)
-        this.ctx.save();
-        this.ctx.globalAlpha = 0.15;
-        this.ctx.strokeStyle = 'rgba(100, 110, 125, 1)';
-        this.ctx.lineWidth = 1;
-        
-        // Draw several ridge lines
-        for (let ridge = 0; ridge < 8; ridge++) {
-            this.ctx.beginPath();
-            const ridgeStart = Math.floor(this.mountain.length * (0.2 + ridge * 0.08));
-            const ridgeEnd = Math.floor(this.mountain.length * (0.3 + ridge * 0.08));
-            
-            for (let i = ridgeStart; i < ridgeEnd; i++) {
-                if (i < this.mountain.length) {
-                    const point = this.mountain[i];
-                    const offset = Math.sin((i - ridgeStart) * 0.3) * 15;
-                    
-                    if (i === ridgeStart) {
-                        this.ctx.moveTo(point.x, point.y + offset);
-                    } else {
-                        this.ctx.lineTo(point.x, point.y + offset);
-                    }
-                }
-            }
-            this.ctx.stroke();
-        }
-        this.ctx.restore();
-        
-        // Mountain edge highlight
+        // Clean mountain edge
         this.ctx.beginPath();
         this.mountain.forEach((point, i) => {
             if (i === 0) {
@@ -273,8 +248,8 @@ class MountainWaterfall {
             }
         });
         
-        this.ctx.strokeStyle = 'rgba(90, 105, 120, 0.7)';
-        this.ctx.lineWidth = 2;
+        this.ctx.strokeStyle = 'rgba(100, 115, 135, 0.4)';
+        this.ctx.lineWidth = 1.5;
         this.ctx.lineJoin = 'round';
         this.ctx.stroke();
         
