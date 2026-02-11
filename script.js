@@ -1,132 +1,146 @@
+// Digital Waterfall (glowy particles + subtle motion blur)
+// Drop-in replacement: keeps the name SimpleParticleWaterfall so your existing init keeps working.
 class SimpleParticleWaterfall {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        if (!this.canvas) return;
+  constructor(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    if (!this.canvas) return;
 
-        this.ctx = this.canvas.getContext("2d");
-        this.particles = [];
-        this.time = 0;
+    this.ctx = this.canvas.getContext("2d");
+    this.particles = [];
+    this.time = 0;
 
-        // Digital lane settings
-        this.particleCount = 850;
-        this.spawnBandWidth = 700;     // wide waterfall
-        this.laneCount = 85;           // vertical lanes
-        this.baseSpeed = 3.2;
+    // TUNABLES
+    this.particleCount = 420;          // increase for denser water
+    this.spawnWidth = 220;             // width of the stream
+    this.spawnY = 0.15;                // spawn start as % of height
+    this.initialSpreadY = 150;         // how "tall" the spawn region is
+    this.gravity = 0.08;               // acceleration
+    this.fadeStart = 0.70;             // start fading at % height
 
-        // Blue palette
-        this.hues = [198, 204, 210, 216];
+    this.resize();
+    this.init();
+    this.animate();
 
-        this.resize();
-        this.init();
-        this.animate();
+    window.addEventListener("resize", () => this.resize());
+  }
 
-        window.addEventListener("resize", () => this.resize());
+  resize() {
+    // HiDPI-safe
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = window.innerWidth * dpr;
+    this.canvas.height = window.innerHeight * dpr;
+    this.canvas.style.width = window.innerWidth + "px";
+    this.canvas.style.height = window.innerHeight + "px";
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    this.centerX = this.width * 0.5;
+  }
+
+  init() {
+    this.particles = [];
+
+    for (let i = 0; i < this.particleCount; i++) {
+      this.particles.push(this.createParticle(true));
     }
+  }
 
-    resize() {
-        const dpr = window.devicePixelRatio || 1;
+  createParticle(randomY = false) {
+    return {
+      x: this.centerX + (Math.random() - 0.5) * this.spawnWidth,
+      y: this.height * this.spawnY + (randomY ? Math.random() * this.initialSpreadY : -Math.random() * 200),
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: Math.random() * 3 + 2,
+      size: Math.random() * 3 + 1,
+      opacity: Math.random() * 0.6 + 0.35,
+      hue: 195 + Math.random() * 35,   // blue/cyan range
+      life: Math.random()              // used for wave phase variety
+    };
+  }
 
-        this.canvas.width = window.innerWidth * dpr;
-        this.canvas.height = window.innerHeight * dpr;
-        this.canvas.style.width = window.innerWidth + "px";
-        this.canvas.style.height = window.innerHeight + "px";
+  updateParticles() {
+    this.time++;
 
-        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    for (const p of this.particles) {
+      // Subtle “digital” wave motion (you can reduce this if it feels too swimmy)
+      const wave = Math.sin(this.time * 0.01 + p.life * 10) * 0.30;
 
-        this.w = window.innerWidth;
-        this.h = window.innerHeight;
-        this.centerX = this.w / 2;
+      p.x += p.vx + wave;
+      p.y += p.vy;
 
-        this.laneSpacing = this.spawnBandWidth / this.laneCount;
+      // Gravity
+      p.vy += this.gravity;
+
+      // Slight air resistance
+      p.vx *= 0.98;
+
+      // Fade near bottom
+      if (p.y > this.height * this.fadeStart) {
+        p.opacity -= 0.025;
+      }
+
+      // Reset if out of view
+      if (p.y > this.height + 40 || p.opacity <= 0) {
+        const np = this.createParticle(false);
+        p.x = np.x;
+        p.y = np.y;
+        p.vx = np.vx;
+        p.vy = np.vy;
+        p.size = np.size;
+        p.opacity = np.opacity;
+        p.hue = np.hue;
+        p.life = 0;
+      }
     }
+  }
 
-    init() {
-        this.particles = [];
-        for (let i = 0; i < this.particleCount; i++) {
-            this.particles.push(this.createParticle(true));
-        }
+  drawParticles() {
+    const ctx = this.ctx;
+
+    for (const p of this.particles) {
+      ctx.save();
+      ctx.globalAlpha = p.opacity;
+
+      // Glow blob
+      const r = p.size * 3;
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      g.addColorStop(0, `hsla(${p.hue}, 80%, 60%, 0.90)`);
+      g.addColorStop(0.5, `hsla(${p.hue}, 70%, 50%, 0.45)`);
+      g.addColorStop(1, `hsla(${p.hue}, 60%, 40%, 0)`);
+
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Motion blur streak (vertical)
+      ctx.globalAlpha = p.opacity * 0.40;
+      ctx.fillStyle = `hsla(${p.hue}, 70%, 55%, 0.35)`;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - p.vy, p.size, p.size * 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
+  }
 
-    createParticle(randomY = false) {
-        const laneIndex = Math.floor(Math.random() * this.laneCount);
+  drawBackground() {
+    // Keep it subtle so water stays readable without blasting brightness
+    const g = this.ctx.createLinearGradient(0, 0, 0, this.height);
+    g.addColorStop(0, "rgba(6,10,18,1)");
+    g.addColorStop(1, "rgba(8,12,20,1)");
+    this.ctx.fillStyle = g;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+  }
 
-        const laneX =
-            this.centerX -
-            this.spawnBandWidth / 2 +
-            laneIndex * this.laneSpacing;
-
-        const y = randomY
-            ? Math.random() * this.h
-            : -20 - Math.random() * 200;
-
-        return {
-            laneX,
-            x: laneX,
-            y,
-            vy: this.baseSpeed + Math.random() * 3,
-            size: 2 + Math.random() * 2,
-            opacity: 0.25 + Math.random() * 0.4,
-            hue: this.hues[Math.floor(Math.random() * this.hues.length)],
-        };
-    }
-
-    drawBackground() {
-        const g = this.ctx.createLinearGradient(0, 0, 0, this.h);
-        g.addColorStop(0, "rgba(6,10,18,1)");
-        g.addColorStop(1, "rgba(8,12,20,1)");
-        this.ctx.fillStyle = g;
-        this.ctx.fillRect(0, 0, this.w, this.h);
-    }
-
-    update() {
-        this.time++;
-
-        for (const p of this.particles) {
-            // Tiny jitter so lanes don't feel rigid
-            p.x = p.laneX + Math.sin(this.time * 0.02 + p.y * 0.01) * 1.2;
-
-            p.y += p.vy;
-
-            if (p.y > this.h + 30) {
-                const np = this.createParticle(false);
-                Object.assign(p, np);
-            }
-        }
-    }
-
-    drawParticles() {
-        const ctx = this.ctx;
-        ctx.save();
-        ctx.globalCompositeOperation = "source-over";
-
-        for (const p of this.particles) {
-            ctx.globalAlpha = p.opacity;
-
-            ctx.fillStyle = `hsla(${p.hue}, 85%, 65%, 1)`;
-
-            // Square digital pixel
-            ctx.fillRect(p.x, p.y, p.size, p.size);
-
-            // Thin vertical digital trail
-            ctx.globalAlpha = p.opacity * 0.35;
-            ctx.fillRect(
-                p.x + p.size / 2 - 1,
-                p.y - p.vy * 2,
-                2,
-                p.size * 3
-            );
-        }
-
-        ctx.restore();
-    }
-
-    animate() {
-        this.ctx.clearRect(0, 0, this.w, this.h);
-        this.drawBackground();
-        this.update();
-        this.drawParticles();
-        requestAnimationFrame(() => this.animate());
-    }
+  animate() {
+    this.ctx.clearRect(0, 0, this.width, this.height);
+    this.drawBackground();
+    this.updateParticles();
+    this.drawParticles();
+    requestAnimationFrame(() => this.animate());
+  }
 }
 
 
