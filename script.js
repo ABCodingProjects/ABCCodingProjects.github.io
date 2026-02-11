@@ -44,38 +44,55 @@ class WaterfallAnimation {
         // Create mountain/cliff structure
         this.cliffPoints = this.generateCliff();
         
-        // Create fog clouds at mountain peak level
+        // Create prominent fog clouds that flow through peaks
         this.fogClouds = [];
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 20; i++) {
             this.fogClouds.push({
-                x: Math.random() * this.width,
-                y: this.height * 0.35 + Math.random() * this.height * 0.15, // Position at peak level
-                vx: (Math.random() - 0.5) * 0.4,
-                size: Math.random() * 180 + 120,
-                opacity: Math.random() * 0.2 + 0.15,
-                life: Math.random() * Math.PI * 2
+                x: Math.random() * this.width * 1.5 - this.width * 0.25,
+                y: this.height * 0.35 + Math.random() * this.height * 0.25,
+                vx: (Math.random() - 0.5) * 0.6 + 0.3, // Mostly moving right
+                vy: (Math.random() - 0.5) * 0.15, // Slight vertical drift
+                size: Math.random() * 250 + 150,
+                opacity: Math.random() * 0.35 + 0.25, // Much more visible
+                life: Math.random() * Math.PI * 2,
+                speed: Math.random() * 0.02 + 0.01
             });
         }
     }
     
     generateCliff() {
         const points = [];
-        const segments = 25; // Much fewer segments for larger, more distinct peaks
-        const baseHeight = this.height * 0.55;
+        const segments = 120;
+        const baseHeight = this.height * 0.65;
+        
+        // Define 4 distinct peaks with precise positions
+        const peaks = [
+            { position: 0.2, height: 180, width: 0.15 },   // Left peak - medium
+            { position: 0.45, height: 320, width: 0.12 },  // CENTER SUMMIT - tallest
+            { position: 0.65, height: 200, width: 0.13 },  // Right-center peak - medium-tall
+            { position: 0.85, height: 150, width: 0.14 }   // Far right peak - shorter
+        ];
         
         for (let i = 0; i <= segments; i++) {
             const x = (i / segments) * this.width;
+            const normalizedX = i / segments;
             
-            // Create major peaks (3-4 large mountains across screen)
-            const majorPeak = Math.abs(Math.sin(i * 0.4)) * 200;
+            let y = baseHeight;
             
-            // Add secondary ridges below summits
-            const secondaryRidge = Math.abs(Math.cos(i * 1.2)) * 80;
+            // Calculate contribution from each peak (triangular shape)
+            peaks.forEach(peak => {
+                const distanceFromPeak = Math.abs(normalizedX - peak.position);
+                
+                if (distanceFromPeak < peak.width) {
+                    // Create sharp triangular peak
+                    const peakContribution = (1 - distanceFromPeak / peak.width) * peak.height;
+                    y -= peakContribution;
+                }
+            });
             
-            // Sharp angular variations for jagged edges
-            const sharpNoise = (Math.random() - 0.5) * 60;
-            
-            const y = baseHeight - majorPeak - secondaryRidge + sharpNoise;
+            // Add slight jaggedness to edges only
+            const edgeNoise = Math.sin(i * 2) * 8;
+            y += edgeNoise;
             
             points.push({ x, y });
         }
@@ -214,55 +231,68 @@ class WaterfallAnimation {
     
     updateFog() {
         this.fogClouds.forEach(cloud => {
-            // Move fog horizontally
+            // Flow horizontally with varying speeds
             cloud.x += cloud.vx;
             
-            // Gentle vertical oscillation
-            cloud.life += 0.01;
+            // Gentle vertical oscillation as fog rises and falls
+            cloud.y += cloud.vy + Math.sin(cloud.life) * 0.2;
+            cloud.life += cloud.speed;
             
-            // Wrap around screen
+            // Wrap around screen for continuous flow
             if (cloud.x > this.width + cloud.size) {
                 cloud.x = -cloud.size;
+                cloud.y = this.height * 0.35 + Math.random() * this.height * 0.25;
             } else if (cloud.x < -cloud.size) {
                 cloud.x = this.width + cloud.size;
+                cloud.y = this.height * 0.35 + Math.random() * this.height * 0.25;
             }
             
-            // Pulsing opacity
-            cloud.opacity = 0.12 + Math.sin(cloud.life) * 0.08;
+            // Keep fog in mountain range vertically
+            if (cloud.y < this.height * 0.3) cloud.vy = Math.abs(cloud.vy);
+            if (cloud.y > this.height * 0.6) cloud.vy = -Math.abs(cloud.vy);
+            
+            // Dynamic opacity pulsing for depth
+            cloud.opacity = 0.3 + Math.sin(cloud.life * 0.5) * 0.15;
         });
     }
     
     drawFog() {
         this.ctx.save();
         
+        // Add blur filter for softer, more atmospheric fog
+        this.ctx.filter = 'blur(8px)';
+        
         this.fogClouds.forEach(cloud => {
             this.ctx.globalAlpha = cloud.opacity;
             
-            // Create soft, wispy fog clouds
+            // Create prominent, wispy fog clouds
             const fogGradient = this.ctx.createRadialGradient(
                 cloud.x, 
-                cloud.y + Math.sin(cloud.life) * 15, 
+                cloud.y, 
                 0,
                 cloud.x, 
-                cloud.y + Math.sin(cloud.life) * 15, 
+                cloud.y, 
                 cloud.size
             );
             
-            // More visible fog with blue-white tones
-            fogGradient.addColorStop(0, 'rgba(200, 220, 240, 0.7)');
-            fogGradient.addColorStop(0.4, 'rgba(160, 190, 220, 0.4)');
-            fogGradient.addColorStop(0.7, 'rgba(120, 150, 180, 0.2)');
-            fogGradient.addColorStop(1, 'rgba(80, 110, 140, 0)');
+            // Much more visible white-blue fog
+            fogGradient.addColorStop(0, 'rgba(240, 250, 255, 0.9)');
+            fogGradient.addColorStop(0.3, 'rgba(220, 235, 245, 0.7)');
+            fogGradient.addColorStop(0.6, 'rgba(180, 210, 230, 0.4)');
+            fogGradient.addColorStop(1, 'rgba(140, 180, 210, 0)');
             
             this.ctx.fillStyle = fogGradient;
-            this.ctx.beginPath();
             
-            // Draw organic, wispy cloud shape
-            for (let i = 0; i < 12; i++) {
-                const angle = (i / 12) * Math.PI * 2;
-                const radius = cloud.size * (0.7 + Math.sin(angle * 4 + cloud.life * 2) * 0.3);
+            // Draw main cloud body with irregular, flowing shape
+            this.ctx.beginPath();
+            const points = 16;
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * Math.PI * 2;
+                const variation = Math.sin(angle * 5 + cloud.life) * 0.3 + 
+                                Math.cos(angle * 3 + cloud.life * 1.5) * 0.2;
+                const radius = cloud.size * (0.6 + variation);
                 const x = cloud.x + Math.cos(angle) * radius;
-                const y = (cloud.y + Math.sin(cloud.life) * 15) + Math.sin(angle) * radius * 0.6;
+                const y = cloud.y + Math.sin(angle) * radius * 0.7; // Flatten slightly
                 
                 if (i === 0) {
                     this.ctx.moveTo(x, y);
@@ -270,38 +300,71 @@ class WaterfallAnimation {
                     this.ctx.lineTo(x, y);
                 }
             }
-            
             this.ctx.closePath();
             this.ctx.fill();
             
-            // Add extra wispy tendrils
-            this.ctx.globalAlpha = cloud.opacity * 0.5;
-            for (let j = 0; j < 3; j++) {
+            // Add wispy tendrils that flow through peaks
+            this.ctx.globalAlpha = cloud.opacity * 0.6;
+            const tendrils = 5;
+            for (let j = 0; j < tendrils; j++) {
+                const tendrilAngle = (j / tendrils) * Math.PI * 2;
+                const tendrilX = cloud.x + Math.cos(tendrilAngle + cloud.life) * cloud.size * 0.7;
+                const tendrilY = cloud.y + Math.sin(tendrilAngle + cloud.life * 0.8) * cloud.size * 0.3;
+                
                 const tendrilGradient = this.ctx.createRadialGradient(
-                    cloud.x + Math.cos(j * 2) * cloud.size * 0.5,
-                    cloud.y + Math.sin(cloud.life + j) * 10,
-                    0,
-                    cloud.x + Math.cos(j * 2) * cloud.size * 0.5,
-                    cloud.y + Math.sin(cloud.life + j) * 10,
-                    cloud.size * 0.4
+                    tendrilX, tendrilY, 0,
+                    tendrilX, tendrilY, cloud.size * 0.5
                 );
                 
-                tendrilGradient.addColorStop(0, 'rgba(180, 200, 220, 0.5)');
-                tendrilGradient.addColorStop(1, 'rgba(120, 150, 180, 0)');
+                tendrilGradient.addColorStop(0, 'rgba(230, 240, 250, 0.8)');
+                tendrilGradient.addColorStop(0.5, 'rgba(200, 220, 235, 0.4)');
+                tendrilGradient.addColorStop(1, 'rgba(170, 200, 220, 0)');
                 
                 this.ctx.fillStyle = tendrilGradient;
+                
+                // Draw elongated, wispy tendril
                 this.ctx.beginPath();
-                this.ctx.arc(
-                    cloud.x + Math.cos(j * 2) * cloud.size * 0.5,
-                    cloud.y + Math.sin(cloud.life + j) * 10,
-                    cloud.size * 0.4,
-                    0,
-                    Math.PI * 2
-                );
+                for (let k = 0; k < 8; k++) {
+                    const a = (k / 8) * Math.PI * 2;
+                    const r = cloud.size * 0.5 * (0.8 + Math.sin(a * 3 + cloud.life) * 0.2);
+                    const px = tendrilX + Math.cos(a) * r;
+                    const py = tendrilY + Math.sin(a) * r * 0.4;
+                    
+                    if (k === 0) {
+                        this.ctx.moveTo(px, py);
+                    } else {
+                        this.ctx.lineTo(px, py);
+                    }
+                }
+                this.ctx.closePath();
                 this.ctx.fill();
+            }
+            
+            // Add subtle streaks for flowing effect
+            this.ctx.globalAlpha = cloud.opacity * 0.3;
+            this.ctx.strokeStyle = 'rgba(220, 235, 245, 0.6)';
+            this.ctx.lineWidth = 3;
+            this.ctx.lineCap = 'round';
+            
+            for (let s = 0; s < 3; s++) {
+                this.ctx.beginPath();
+                const startX = cloud.x - cloud.size * 0.3;
+                const startY = cloud.y + (s - 1) * 20;
+                const endX = cloud.x + cloud.size * 0.4;
+                const endY = startY + Math.sin(cloud.life + s) * 15;
+                
+                this.ctx.moveTo(startX, startY);
+                this.ctx.quadraticCurveTo(
+                    (startX + endX) / 2, 
+                    (startY + endY) / 2 + Math.sin(cloud.life * 2 + s) * 10,
+                    endX, 
+                    endY
+                );
+                this.ctx.stroke();
             }
         });
         
+        this.ctx.filter = 'none';
         this.ctx.restore();
     }
     
