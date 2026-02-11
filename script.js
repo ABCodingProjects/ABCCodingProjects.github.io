@@ -52,32 +52,31 @@ class WaterfallAnimation {
         const baseX = side === 'left' ? 0 : this.width;
         const direction = side === 'left' ? 1 : -1;
         
-        // Create layered rock formations with distinct stone colors
-        const layers = 4;
+        // Create layered rock formations with very visible stone colors
+        const layers = 3;
         for (let layer = 0; layer < layers; layer++) {
             const points = [];
-            const segments = 30;
-            const layerDepth = layer * 80 * direction;
+            const segments = 25;
+            const layerDepth = layer * 50 * direction;
             
             for (let i = 0; i <= segments; i++) {
                 const y = (i / segments) * this.height;
                 
                 // Create irregular, jutting rock edges
-                const baseWidth = 300 + layer * 40;
-                const noise = Math.sin(i * 0.3 + layer) * 60 + Math.cos(i * 0.5) * 40;
-                const juttingEdge = Math.random() > 0.6 ? Math.random() * 80 : 0;
+                const baseWidth = 350 + layer * 30;
+                const noise = Math.sin(i * 0.4 + layer) * 70 + Math.cos(i * 0.6) * 50;
+                const juttingEdge = Math.random() > 0.5 ? Math.random() * 100 : 0;
                 
                 const x = baseX + (baseWidth + noise + juttingEdge) * direction + layerDepth;
                 
                 points.push({ x, y });
             }
             
-            // Dark stone colors - greys and blacks
+            // Very visible dark stone colors - solid and opaque
             const stoneColors = [
-                'rgba(45, 50, 60, 0.95)',    // Dark grey-blue
-                'rgba(35, 38, 45, 0.90)',    // Darker grey
-                'rgba(25, 28, 35, 0.85)',    // Very dark grey
-                'rgba(20, 22, 28, 0.80)'     // Almost black
+                'rgba(50, 55, 65, 1)',      // Medium dark grey (frontmost)
+                'rgba(35, 40, 48, 1)',      // Darker grey
+                'rgba(25, 28, 35, 1)'       // Very dark grey/black
             ];
             
             rocks.push({
@@ -105,11 +104,11 @@ class WaterfallAnimation {
             this.ctx.lineTo(0, this.height);
             this.ctx.closePath();
             
-            // Fill with stone color
+            // Fill with solid stone color
             this.ctx.fillStyle = rock.color;
             this.ctx.fill();
             
-            // Add edge highlights to make rocks visible
+            // Add strong edge highlights to make rocks very visible
             this.ctx.beginPath();
             rock.points.forEach((point, i) => {
                 if (i === 0) {
@@ -119,13 +118,13 @@ class WaterfallAnimation {
                 }
             });
             
-            // Subtle blue-grey edge highlight
+            // Bright edge highlights
             if (index === 0) {
-                this.ctx.strokeStyle = 'rgba(80, 100, 120, 0.5)';
-                this.ctx.lineWidth = 3;
+                this.ctx.strokeStyle = 'rgba(100, 120, 140, 0.8)';
+                this.ctx.lineWidth = 4;
             } else {
-                this.ctx.strokeStyle = 'rgba(60, 75, 90, 0.3)';
-                this.ctx.lineWidth = 2;
+                this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.6)';
+                this.ctx.lineWidth = 3;
             }
             this.ctx.stroke();
             
@@ -146,11 +145,11 @@ class WaterfallAnimation {
             this.ctx.lineTo(this.width, this.height);
             this.ctx.closePath();
             
-            // Fill with stone color
+            // Fill with solid stone color
             this.ctx.fillStyle = rock.color;
             this.ctx.fill();
             
-            // Add edge highlights
+            // Add strong edge highlights
             this.ctx.beginPath();
             rock.points.forEach((point, i) => {
                 if (i === 0) {
@@ -160,13 +159,13 @@ class WaterfallAnimation {
                 }
             });
             
-            // Subtle blue-grey edge highlight
+            // Bright edge highlights
             if (index === 0) {
-                this.ctx.strokeStyle = 'rgba(80, 100, 120, 0.5)';
-                this.ctx.lineWidth = 3;
+                this.ctx.strokeStyle = 'rgba(100, 120, 140, 0.8)';
+                this.ctx.lineWidth = 4;
             } else {
-                this.ctx.strokeStyle = 'rgba(60, 75, 90, 0.3)';
-                this.ctx.lineWidth = 2;
+                this.ctx.strokeStyle = 'rgba(80, 95, 110, 0.6)';
+                this.ctx.lineWidth = 3;
             }
             this.ctx.stroke();
             
@@ -332,10 +331,12 @@ class WaterfallAnimation {
         this.time++;
         
         this.drawBackground();
-        this.drawRockFormations();
+        // Draw water FIRST (behind rocks)
         this.updateParticles();
         this.drawParticles();
         this.drawMist();
+        // Draw rocks LAST (in front of water)
+        this.drawRockFormations();
         
         requestAnimationFrame(() => this.animate());
     }
