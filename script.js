@@ -27,13 +27,13 @@ class WaterfallAnimation {
         this.particles = [];
         
         // Create much wider waterfall stream
-        this.particleCount = 300; // Increased for denser water
+        this.particleCount = 400; // Increased for even denser, wider water
         
         for (let i = 0; i < this.particleCount; i++) {
             this.particles.push({
-                x: this.width * 0.5 + (Math.random() - 0.5) * 400, // Wider stream
+                x: this.width * 0.5 + (Math.random() - 0.5) * 600, // Much wider: 600px spread (was 400px)
                 y: Math.random() * this.height * 0.4,
-                vx: (Math.random() - 0.5) * 1.2,
+                vx: (Math.random() - 0.5) * 1.5,
                 vy: Math.random() * 4 + 3,
                 size: Math.random() * 4 + 2,
                 opacity: Math.random() * 0.7 + 0.3,
@@ -52,26 +52,30 @@ class WaterfallAnimation {
         const baseX = side === 'left' ? 0 : this.width;
         const direction = side === 'left' ? 1 : -1;
         
-        // Create layered rock formations with smooth, water-eroded edges
+        // Create layered rock formations with more varied, interesting curves
         const layers = 3;
         for (let layer = 0; layer < layers; layer++) {
             const points = [];
-            const segments = 50; // More segments for smoother curves
+            const segments = 50;
             const layerDepth = layer * 50 * direction;
             
             for (let i = 0; i <= segments; i++) {
                 const y = (i / segments) * this.height;
                 
-                // Create smooth, flowing curves - like water erosion
-                const baseWidth = 350 + layer * 30;
+                // Create varied, natural curves - more interesting erosion patterns
+                const baseWidth = 320 + layer * 30; // Slightly narrower so waterfall is wider
                 
-                // Gentle, natural wave patterns (erosion effect)
-                const smoothCurve1 = Math.sin(i * 0.15) * 60;
-                const smoothCurve2 = Math.cos(i * 0.08) * 40;
-                const smoothCurve3 = Math.sin(i * 0.25 + layer) * 30;
+                // Multiple overlapping wave patterns for varied curves
+                const largeCurve = Math.sin(i * 0.12) * 80;
+                const mediumCurve = Math.cos(i * 0.25 + layer) * 50;
+                const smallCurve = Math.sin(i * 0.4 + layer * 2) * 35;
+                const detailCurve = Math.cos(i * 0.6) * 20;
                 
-                // Combine for organic, smooth curves
-                const erosionPattern = smoothCurve1 + smoothCurve2 + smoothCurve3;
+                // Add some variation based on height for more natural look
+                const heightVariation = Math.sin(i * 0.08) * 40;
+                
+                // Combine all curves for complex, natural erosion pattern
+                const erosionPattern = largeCurve + mediumCurve + smallCurve + detailCurve + heightVariation;
                 
                 const x = baseX + (baseWidth + erosionPattern) * direction + layerDepth;
                 
@@ -238,9 +242,9 @@ class WaterfallAnimation {
             
             // Reset particle at top when it reaches bottom or fades
             if (particle.y > this.height || particle.opacity <= 0) {
-                particle.x = this.width * 0.5 + (Math.random() - 0.5) * 400;
+                particle.x = this.width * 0.5 + (Math.random() - 0.5) * 600; // Match wider spread
                 particle.y = Math.random() * 50;
-                particle.vx = (Math.random() - 0.5) * 1.2;
+                particle.vx = (Math.random() - 0.5) * 1.5;
                 particle.vy = Math.random() * 4 + 3;
                 particle.opacity = Math.random() * 0.7 + 0.3;
                 particle.life = 0;
