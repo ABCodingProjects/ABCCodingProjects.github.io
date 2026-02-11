@@ -26,151 +26,248 @@ class WaterfallAnimation {
     init() {
         this.particles = [];
         
-        // Create enhanced waterfall particles
+        // Create much wider waterfall stream
+        this.particleCount = 300; // Increased for denser water
+        
         for (let i = 0; i < this.particleCount; i++) {
             this.particles.push({
-                x: this.width * 0.5 + (Math.random() - 0.5) * 150,
-                y: this.height * 0.15 + Math.random() * 150,
-                vx: (Math.random() - 0.5) * 0.8,
-                vy: Math.random() * 3 + 2,
-                size: Math.random() * 3 + 1,
-                opacity: Math.random() * 0.6 + 0.4,
-                hue: 200 + Math.random() * 40,
+                x: this.width * 0.5 + (Math.random() - 0.5) * 400, // Wider stream
+                y: Math.random() * this.height * 0.4,
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: Math.random() * 4 + 3,
+                size: Math.random() * 4 + 2,
+                opacity: Math.random() * 0.7 + 0.3,
+                hue: 200 + Math.random() * 30,
                 life: Math.random(),
-                maxLife: 1,
             });
         }
         
-        // Create mountain/cliff structure
-        this.cliffPoints = this.generateCliff();
-        
-        // Create prominent fog clouds that flow through peaks
-        this.fogClouds = [];
-        for (let i = 0; i < 20; i++) {
-            this.fogClouds.push({
-                x: Math.random() * this.width * 1.5 - this.width * 0.25,
-                y: this.height * 0.35 + Math.random() * this.height * 0.25,
-                vx: (Math.random() - 0.5) * 0.6 + 0.3, // Mostly moving right
-                vy: (Math.random() - 0.5) * 0.15, // Slight vertical drift
-                size: Math.random() * 250 + 150,
-                opacity: Math.random() * 0.35 + 0.25, // Much more visible
-                life: Math.random() * Math.PI * 2,
-                speed: Math.random() * 0.02 + 0.01
-            });
-        }
+        // Create rock formations on left and right sides
+        this.leftRocks = this.generateRockFormation('left');
+        this.rightRocks = this.generateRockFormation('right');
     }
     
-    generateCliff() {
-        const points = [];
-        const segments = 120;
-        const baseHeight = this.height * 0.65;
+    generateRockFormation(side) {
+        const rocks = [];
+        const baseX = side === 'left' ? 0 : this.width;
+        const direction = side === 'left' ? 1 : -1;
         
-        // Define 4 distinct peaks with precise positions
-        const peaks = [
-            { position: 0.2, height: 180, width: 0.15 },   // Left peak - medium
-            { position: 0.45, height: 320, width: 0.12 },  // CENTER SUMMIT - tallest
-            { position: 0.65, height: 200, width: 0.13 },  // Right-center peak - medium-tall
-            { position: 0.85, height: 150, width: 0.14 }   // Far right peak - shorter
-        ];
-        
-        for (let i = 0; i <= segments; i++) {
-            const x = (i / segments) * this.width;
-            const normalizedX = i / segments;
+        // Create layered rock formations with smooth, water-eroded edges
+        const layers = 3;
+        for (let layer = 0; layer < layers; layer++) {
+            const points = [];
+            const segments = 50; // More segments for smoother curves
+            const layerDepth = layer * 50 * direction;
             
-            let y = baseHeight;
-            
-            // Calculate contribution from each peak (triangular shape)
-            peaks.forEach(peak => {
-                const distanceFromPeak = Math.abs(normalizedX - peak.position);
+            for (let i = 0; i <= segments; i++) {
+                const y = (i / segments) * this.height;
                 
-                if (distanceFromPeak < peak.width) {
-                    // Create sharp triangular peak
-                    const peakContribution = (1 - distanceFromPeak / peak.width) * peak.height;
-                    y -= peakContribution;
+                // Create smooth, flowing curves - like water erosion
+                const baseWidth = 350 + layer * 30;
+                
+                // Gentle, natural wave patterns (erosion effect)
+                const smoothCurve1 = Math.sin(i * 0.15) * 60;
+                const smoothCurve2 = Math.cos(i * 0.08) * 40;
+                const smoothCurve3 = Math.sin(i * 0.25 + layer) * 30;
+                
+                // Combine for organic, smooth curves
+                const erosionPattern = smoothCurve1 + smoothCurve2 + smoothCurve3;
+                
+                const x = baseX + (baseWidth + erosionPattern) * direction + layerDepth;
+                
+                points.push({ x, y });
+            }
+            
+            // Very visible dark stone colors - solid and opaque
+            const stoneColors = [
+                'rgba(50, 55, 65, 1)',      // Medium dark grey (frontmost)
+                'rgba(35, 40, 48, 1)',      // Darker grey
+                'rgba(25, 28, 35, 1)'       // Very dark grey/black
+            ];
+            
+            rocks.push({
+                points,
+                color: stoneColors[layer],
+                layer
+            });
+        }
+        
+        return rocks;
+    }
+    
+    drawRockFormations() {
+        // Draw left rock formations
+        this.leftRocks.forEach((rock, index) => {
+            this.ctx.save();
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, 0);
+            
+            rock.points.forEach(point => {
+                this.ctx.lineTo(point.x, point.y);
+            });
+            
+            this.ctx.lineTo(0, this.height);
+            this.ctx.closePath();
+            
+            // Fill with solid stone color
+            this.ctx.fillStyle = rock.color;
+            this.ctx.fill();
+            
+            // Add soft edge highlights for smooth, eroded look
+            this.ctx.beginPath();
+            rock.points.forEach((point, i) => {
+                if (i === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
                 }
             });
             
-            // Add slight jaggedness to edges only
-            const edgeNoise = Math.sin(i * 2) * 8;
-            y += edgeNoise;
-            
-            points.push({ x, y });
-        }
-        
-        return points;
-    }
-    
-    drawCliff() {
-        this.ctx.save();
-        
-        // Draw dark cliff silhouette
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, this.height);
-        
-        this.cliffPoints.forEach(point => {
-            this.ctx.lineTo(point.x, point.y);
-        });
-        
-        this.ctx.lineTo(this.width, this.height);
-        this.ctx.closePath();
-        
-        const cliffGradient = this.ctx.createLinearGradient(0, this.height * 0.3, 0, this.height);
-        cliffGradient.addColorStop(0, 'rgba(10, 13, 18, 0.9)');
-        cliffGradient.addColorStop(0.5, 'rgba(19, 23, 31, 0.95)');
-        cliffGradient.addColorStop(1, 'rgba(10, 13, 18, 1)');
-        
-        this.ctx.fillStyle = cliffGradient;
-        this.ctx.fill();
-        
-        // Subtle cliff edge highlight
-        this.ctx.beginPath();
-        this.cliffPoints.forEach((point, i) => {
-            if (i === 0) {
-                this.ctx.moveTo(point.x, point.y);
+            // Soft, subtle highlights - water-polished stone
+            if (index === 0) {
+                this.ctx.strokeStyle = 'rgba(90, 110, 130, 0.6)';
+                this.ctx.lineWidth = 3;
+                this.ctx.lineJoin = 'round'; // Smooth rounded corners
+                this.ctx.lineCap = 'round';
             } else {
-                this.ctx.lineTo(point.x, point.y);
+                this.ctx.strokeStyle = 'rgba(70, 85, 100, 0.4)';
+                this.ctx.lineWidth = 2;
+                this.ctx.lineJoin = 'round';
+                this.ctx.lineCap = 'round';
             }
+            this.ctx.stroke();
+            
+            this.ctx.restore();
         });
         
-        this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
-        this.ctx.lineWidth = 3;
-        this.ctx.lineJoin = 'miter'; // Sharp corners instead of rounded
-        this.ctx.stroke();
-        
-        this.ctx.restore();
+        // Draw right rock formations
+        this.rightRocks.forEach((rock, index) => {
+            this.ctx.save();
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.width, 0);
+            
+            rock.points.forEach(point => {
+                this.ctx.lineTo(point.x, point.y);
+            });
+            
+            this.ctx.lineTo(this.width, this.height);
+            this.ctx.closePath();
+            
+            // Fill with solid stone color
+            this.ctx.fillStyle = rock.color;
+            this.ctx.fill();
+            
+            // Add soft edge highlights
+            this.ctx.beginPath();
+            rock.points.forEach((point, i) => {
+                if (i === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+            });
+            
+            // Soft, subtle highlights - water-polished stone
+            if (index === 0) {
+                this.ctx.strokeStyle = 'rgba(90, 110, 130, 0.6)';
+                this.ctx.lineWidth = 3;
+                this.ctx.lineJoin = 'round';
+                this.ctx.lineCap = 'round';
+            } else {
+                this.ctx.strokeStyle = 'rgba(70, 85, 100, 0.4)';
+                this.ctx.lineWidth = 2;
+                this.ctx.lineJoin = 'round';
+                this.ctx.lineCap = 'round';
+            }
+            this.ctx.stroke();
+            
+            this.ctx.restore();
+        });
     }
     
     updateParticles() {
         this.particles.forEach(particle => {
-            // Update position with slight wave motion
-            particle.x += particle.vx + Math.sin(this.time * 0.01 + particle.life * 10) * 0.3;
+            // Natural waterfall physics
             particle.y += particle.vy;
+            particle.x += particle.vx;
             
-            // Gravity effect
-            particle.vy += 0.08;
-            
-            // Update life
-            particle.life += 0.008;
-            
-            // Fade based on position and life
-            if (particle.y > this.height * 0.7) {
-                particle.opacity -= 0.025;
-            }
-            
-            // Reset particle if off screen or faded
-            if (particle.y > this.height || particle.opacity <= 0) {
-                particle.x = this.width * 0.5 + (Math.random() - 0.5) * 150;
-                particle.y = this.height * 0.15 + Math.random() * 100;
-                particle.vx = (Math.random() - 0.5) * 0.8;
-                particle.vy = Math.random() * 3 + 2;
-                particle.opacity = Math.random() * 0.6 + 0.4;
-                particle.life = 0;
-                particle.hue = 200 + Math.random() * 40;
-            }
+            // Gravity acceleration
+            particle.vy += 0.15;
             
             // Air resistance
-            particle.vx *= 0.98;
+            particle.vx *= 0.99;
+            
+            // Slight turbulence in the center
+            particle.vx += (Math.random() - 0.5) * 0.2;
+            
+            // Check collision with left rocks
+            if (particle.x < this.width * 0.3) {
+                const leftEdge = this.getLeftRockEdge(particle.y);
+                if (particle.x < leftEdge) {
+                    particle.x = leftEdge;
+                    particle.vx = Math.abs(particle.vx) * 0.6; // Bounce right
+                    particle.vy *= 0.8; // Lose some downward momentum
+                    
+                    // Create splash effect
+                    particle.opacity *= 0.7;
+                }
+            }
+            
+            // Check collision with right rocks
+            if (particle.x > this.width * 0.7) {
+                const rightEdge = this.getRightRockEdge(particle.y);
+                if (particle.x > rightEdge) {
+                    particle.x = rightEdge;
+                    particle.vx = -Math.abs(particle.vx) * 0.6; // Bounce left
+                    particle.vy *= 0.8; // Lose some downward momentum
+                    
+                    // Create splash effect
+                    particle.opacity *= 0.7;
+                }
+            }
+            
+            // Update life
+            particle.life += 0.01;
+            
+            // Fade as particles fall
+            if (particle.y > this.height * 0.7) {
+                particle.opacity -= 0.02;
+            }
+            
+            // Reset particle at top when it reaches bottom or fades
+            if (particle.y > this.height || particle.opacity <= 0) {
+                particle.x = this.width * 0.5 + (Math.random() - 0.5) * 400;
+                particle.y = Math.random() * 50;
+                particle.vx = (Math.random() - 0.5) * 1.2;
+                particle.vy = Math.random() * 4 + 3;
+                particle.opacity = Math.random() * 0.7 + 0.3;
+                particle.life = 0;
+            }
         });
+    }
+    
+    getLeftRockEdge(y) {
+        // Get the x position of the left rock edge at height y
+        const normalizedY = y / this.height;
+        const index = Math.floor(normalizedY * 29);
+        
+        if (this.leftRocks[0] && this.leftRocks[0].points[index]) {
+            return this.leftRocks[0].points[index].x;
+        }
+        return 0;
+    }
+    
+    getRightRockEdge(y) {
+        // Get the x position of the right rock edge at height y
+        const normalizedY = y / this.height;
+        const index = Math.floor(normalizedY * 29);
+        
+        if (this.rightRocks[0] && this.rightRocks[0].points[index]) {
+            return this.rightRocks[0].points[index].x;
+        }
+        return this.width;
     }
     
     drawParticles() {
@@ -215,156 +312,17 @@ class WaterfallAnimation {
     drawMist() {
         this.ctx.save();
         
-        // Animated mist at the bottom
-        const mistY = this.height * 0.65;
+        // Subtle mist at the base where water hits
+        const mistY = this.height * 0.75;
         const mistGradient = this.ctx.createLinearGradient(0, mistY, 0, this.height);
         
         mistGradient.addColorStop(0, 'rgba(59, 130, 246, 0)');
-        mistGradient.addColorStop(0.4, `rgba(59, 130, 246, ${0.08 + Math.sin(this.time * 0.02) * 0.02})`);
-        mistGradient.addColorStop(1, `rgba(6, 182, 212, ${0.12 + Math.cos(this.time * 0.015) * 0.03})`);
+        mistGradient.addColorStop(0.3, `rgba(59, 130, 246, ${0.06 + Math.sin(this.time * 0.02) * 0.02})`);
+        mistGradient.addColorStop(1, `rgba(6, 182, 212, ${0.10 + Math.cos(this.time * 0.015) * 0.03})`);
         
         this.ctx.fillStyle = mistGradient;
-        this.ctx.fillRect(0, mistY, this.width, this.height - mistY);
+        this.ctx.fillRect(this.width * 0.3, mistY, this.width * 0.4, this.height - mistY);
         
-        this.ctx.restore();
-    }
-    
-    updateFog() {
-        this.fogClouds.forEach(cloud => {
-            // Flow horizontally with varying speeds
-            cloud.x += cloud.vx;
-            
-            // Gentle vertical oscillation as fog rises and falls
-            cloud.y += cloud.vy + Math.sin(cloud.life) * 0.2;
-            cloud.life += cloud.speed;
-            
-            // Wrap around screen for continuous flow
-            if (cloud.x > this.width + cloud.size) {
-                cloud.x = -cloud.size;
-                cloud.y = this.height * 0.35 + Math.random() * this.height * 0.25;
-            } else if (cloud.x < -cloud.size) {
-                cloud.x = this.width + cloud.size;
-                cloud.y = this.height * 0.35 + Math.random() * this.height * 0.25;
-            }
-            
-            // Keep fog in mountain range vertically
-            if (cloud.y < this.height * 0.3) cloud.vy = Math.abs(cloud.vy);
-            if (cloud.y > this.height * 0.6) cloud.vy = -Math.abs(cloud.vy);
-            
-            // Dynamic opacity pulsing for depth
-            cloud.opacity = 0.3 + Math.sin(cloud.life * 0.5) * 0.15;
-        });
-    }
-    
-    drawFog() {
-        this.ctx.save();
-        
-        // Add blur filter for softer, more atmospheric fog
-        this.ctx.filter = 'blur(8px)';
-        
-        this.fogClouds.forEach(cloud => {
-            this.ctx.globalAlpha = cloud.opacity;
-            
-            // Create prominent, wispy fog clouds
-            const fogGradient = this.ctx.createRadialGradient(
-                cloud.x, 
-                cloud.y, 
-                0,
-                cloud.x, 
-                cloud.y, 
-                cloud.size
-            );
-            
-            // Much more visible white-blue fog
-            fogGradient.addColorStop(0, 'rgba(240, 250, 255, 0.9)');
-            fogGradient.addColorStop(0.3, 'rgba(220, 235, 245, 0.7)');
-            fogGradient.addColorStop(0.6, 'rgba(180, 210, 230, 0.4)');
-            fogGradient.addColorStop(1, 'rgba(140, 180, 210, 0)');
-            
-            this.ctx.fillStyle = fogGradient;
-            
-            // Draw main cloud body with irregular, flowing shape
-            this.ctx.beginPath();
-            const points = 16;
-            for (let i = 0; i < points; i++) {
-                const angle = (i / points) * Math.PI * 2;
-                const variation = Math.sin(angle * 5 + cloud.life) * 0.3 + 
-                                Math.cos(angle * 3 + cloud.life * 1.5) * 0.2;
-                const radius = cloud.size * (0.6 + variation);
-                const x = cloud.x + Math.cos(angle) * radius;
-                const y = cloud.y + Math.sin(angle) * radius * 0.7; // Flatten slightly
-                
-                if (i === 0) {
-                    this.ctx.moveTo(x, y);
-                } else {
-                    this.ctx.lineTo(x, y);
-                }
-            }
-            this.ctx.closePath();
-            this.ctx.fill();
-            
-            // Add wispy tendrils that flow through peaks
-            this.ctx.globalAlpha = cloud.opacity * 0.6;
-            const tendrils = 5;
-            for (let j = 0; j < tendrils; j++) {
-                const tendrilAngle = (j / tendrils) * Math.PI * 2;
-                const tendrilX = cloud.x + Math.cos(tendrilAngle + cloud.life) * cloud.size * 0.7;
-                const tendrilY = cloud.y + Math.sin(tendrilAngle + cloud.life * 0.8) * cloud.size * 0.3;
-                
-                const tendrilGradient = this.ctx.createRadialGradient(
-                    tendrilX, tendrilY, 0,
-                    tendrilX, tendrilY, cloud.size * 0.5
-                );
-                
-                tendrilGradient.addColorStop(0, 'rgba(230, 240, 250, 0.8)');
-                tendrilGradient.addColorStop(0.5, 'rgba(200, 220, 235, 0.4)');
-                tendrilGradient.addColorStop(1, 'rgba(170, 200, 220, 0)');
-                
-                this.ctx.fillStyle = tendrilGradient;
-                
-                // Draw elongated, wispy tendril
-                this.ctx.beginPath();
-                for (let k = 0; k < 8; k++) {
-                    const a = (k / 8) * Math.PI * 2;
-                    const r = cloud.size * 0.5 * (0.8 + Math.sin(a * 3 + cloud.life) * 0.2);
-                    const px = tendrilX + Math.cos(a) * r;
-                    const py = tendrilY + Math.sin(a) * r * 0.4;
-                    
-                    if (k === 0) {
-                        this.ctx.moveTo(px, py);
-                    } else {
-                        this.ctx.lineTo(px, py);
-                    }
-                }
-                this.ctx.closePath();
-                this.ctx.fill();
-            }
-            
-            // Add subtle streaks for flowing effect
-            this.ctx.globalAlpha = cloud.opacity * 0.3;
-            this.ctx.strokeStyle = 'rgba(220, 235, 245, 0.6)';
-            this.ctx.lineWidth = 3;
-            this.ctx.lineCap = 'round';
-            
-            for (let s = 0; s < 3; s++) {
-                this.ctx.beginPath();
-                const startX = cloud.x - cloud.size * 0.3;
-                const startY = cloud.y + (s - 1) * 20;
-                const endX = cloud.x + cloud.size * 0.4;
-                const endY = startY + Math.sin(cloud.life + s) * 15;
-                
-                this.ctx.moveTo(startX, startY);
-                this.ctx.quadraticCurveTo(
-                    (startX + endX) / 2, 
-                    (startY + endY) / 2 + Math.sin(cloud.life * 2 + s) * 10,
-                    endX, 
-                    endY
-                );
-                this.ctx.stroke();
-            }
-        });
-        
-        this.ctx.filter = 'none';
         this.ctx.restore();
     }
     
@@ -387,12 +345,12 @@ class WaterfallAnimation {
         this.time++;
         
         this.drawBackground();
-        this.drawCliff();
+        // Draw water FIRST (behind rocks)
         this.updateParticles();
         this.drawParticles();
-        this.updateFog();
-        this.drawFog();
         this.drawMist();
+        // Draw rocks LAST (in front of water)
+        this.drawRockFormations();
         
         requestAnimationFrame(() => this.animate());
     }
@@ -501,6 +459,40 @@ function initParallax() {
 
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+    // Custom cursor tracking
+    const cursor = document.createElement('div');
+    cursor.style.cssText = `
+        position: fixed;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        background: rgba(59, 130, 246, 0.2);
+        pointer-events: none;
+        z-index: 10000;
+        transform: translate(-50%, -50%);
+        transition: width 0.15s ease, height 0.15s ease, background 0.15s ease;
+        mix-blend-mode: screen;
+    `;
+    document.body.appendChild(cursor);
+    
+    document.addEventListener('mousemove', (e) => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+    });
+    
+    document.addEventListener('mousedown', () => {
+        cursor.style.width = '16px';
+        cursor.style.height = '16px';
+        cursor.style.background = 'rgba(59, 130, 246, 0.5)';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        cursor.style.width = '20px';
+        cursor.style.height = '20px';
+        cursor.style.background = 'rgba(59, 130, 246, 0.2)';
+    });
+    
     // Initialize waterfall animation
     new WaterfallAnimation('waterfallCanvas');
     
